@@ -16,7 +16,9 @@ npm run dev
 - 구현: 여행 조건·취향 입력, 도시 골격 제안 UI, 역할별 Gemini 서버 호출, 가이드북 렌더링, 예시 2종, 수동 편집·고정·AI 수정안 비교, 브라우저 보관, JSON·HTML 다운로드.
 - 구현/외부 검증 대기: 실제 Gemini 생성 품질, Maps/Search 권한, Supabase 로그인·DB 저장.
 - 구현: 날짜별 요청 분할·중단 후 재개, 예산 항목별 합계·미확인 구분.
-- 추가 작업: 출력 개인정보 선택, 실제 서비스 검증, 배포·제출 영상. 상세 미완료 항목은 `docs/implementation-status.md`를 참고하세요.
+- 구현: 내보내기 전 포함 항목 선택·미리보기, 근거가 연결된 식당·숙박 후보 비교. 자유 서술 속 개인정보를 자동 탐지하는 기능은 아닙니다.
+- 진행 중: 실제 서비스 검증, 공개 배포, 제출 영상 완성. Remotion 영상 코드와 45초 트레일러 초안은 `video/`에 있으며 과정 영상의 실제 수정 증거는 아직 등록 전입니다. 상세 미완료 항목은 [구현 현황](docs/implementation-status.md)을 참고하세요.
+- 조사 방식 재검토: Maps Grounding의 내보내기·저장 제한과 Search 표시 조건을 해결하지 못했습니다. 현재 외부 조사 경로가 공개 운영에 적합하다고 판단하지 않습니다. [자료 이용 검토](docs/source-policy.md)를 참고하세요.
 - 예시 데이터는 기능 체험용입니다. 최신 관광·영업·교통·가격을 검증한 여행 일정이 아닙니다.
 
 ## 선택적 계정 저장
@@ -38,7 +40,7 @@ npm run build
 npm run test:e2e
 ```
 
-E2E는 설치된 Google Chrome과 로컬 서버를 사용합니다. HTML은 본문·CSS를 한 파일에 포함하며 외부 지도·출처 링크에는 네트워크가 필요합니다. 상세 요구사항은 `docs/travel-planner-plan.md`, 구현 상태는 `docs/implementation.md`를 참고하세요.
+E2E는 설치된 Google Chrome과 로컬 서버를 사용합니다. HTML은 본문·CSS를 한 파일에 포함하며 외부 지도·출처 링크에는 네트워크가 필요합니다. 상세 요구사항은 [계획서](docs/travel-planner-plan.md), 구현·검증 상태는 [구현 현황](docs/implementation-status.md)을 참고하세요.
 
 ## 보안·이력
 

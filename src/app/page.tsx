@@ -87,9 +87,13 @@ const themes = [
 export default function Home() {
   const [view, setView] = useState<View>("home");
   const [brief, setBrief] = useState<Brief>(blank);
-  const [trip, setTrip] = useState<Trip | null>(null);
+  const [trip, setTripState] = useState<Trip | null>(null);
+  const tripRef = useRef<Trip | null>(null);
+  const revisionContext = useRef(0);
   const [outline, setOutline] = useState<Outline | null>(null);
   const [library, setLibrary] = useState<Trip[]>([]);
+  const [recoveryBackup, setRecoveryBackup] = useState<string | null>(null);
+  const recoveryBlocked = useRef(false);
   const [step, setStep] = useState(0);
   const [tab, setTab] = useState<"guide" | "edit">("guide");
   const [day, setDay] = useState(0);
@@ -131,7 +135,26 @@ export default function Home() {
         setCheckpoint(pending.data);
         setOutline(pending.data.outline);
       }
-      const data = JSON.parse(localStorage.getItem("travel-books-v1") || "[]");
+      const rawBooks = localStorage.getItem("travel-books-v1") || "[]";
+      const data = JSON.parse(rawBooks);
+      setRecoveryBackup(localStorage.getItem("travel-books-recovery-v1"));
+      if (
+        Array.isArray(data) &&
+        data.some((item) => !tripSchema.safeParse(item).success)
+      ) {
+        setRecoveryBackup(rawBooks);
+        try {
+          localStorage.setItem("travel-books-recovery-v1", rawBooks);
+          setNotice(
+            "읽을 수 없는 여행이 있어 원본을 별도 보존했습니다. 내 여행책에서 복구용 JSON을 내려받을 수 있습니다.",
+          );
+        } catch {
+          recoveryBlocked.current = true;
+          setNotice(
+            "복구본을 추가 저장할 공간이 부족합니다. 내 여행책에서 복구용 JSON을 먼저 내려받으세요. 기존 보관본 덮어쓰기는 차단했습니다.",
+          );
+        }
+      }
       setLibrary(
         Array.isArray(data)
           ? data
@@ -164,13 +187,28 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [notice]);
   function navigate(v: View) {
+    revisionContext.current++;
+    setCandidate(null);
     setView(v);
     setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function save(t = trip) {
     if (!t) return;
-    const next = [t, ...library.filter((x) => x.id !== t.id)];
+    if (recoveryBlocked.current) {
+      setError(
+        "기존 원본 보호를 위해 보관을 중단했습니다. 내 여행책에서 복구용 JSON을 내려받고 브라우저 저장 공간을 확보해 주세요.",
+      );
+      return;
+    }
+    const validated = tripSchema.safeParse(t);
+    if (!validated.success) {
+      setError(
+        "저장하지 못했습니다. 비어 있는 제목·시간과 활동 수·비용 입력을 확인해 주세요. 이전 보관본은 유지됩니다.",
+      );
+      return;
+    }
+    const next = [validated.data, ...library.filter((x) => x.id !== t.id)];
     try {
       localStorage.setItem("travel-books-v1", JSON.stringify(next));
       setLibrary(next);
@@ -178,6 +216,12 @@ export default function Home() {
     } catch {
       setError("브라우저 저장 공간이 부족합니다. JSON 파일로 내보내 주세요.");
     }
+  }
+  function setTrip(next: Trip | null) {
+    tripRef.current = next;
+    revisionContext.current++;
+    setCandidate(null);
+    setTripState(next);
   }
   function openExample(i: number) {
     setTrip(structuredClone(examples[i]));
@@ -293,6 +337,8 @@ export default function Home() {
   }
   async function revise() {
     if (!trip || !request.trim()) return;
+    const original = trip;
+    const context = revisionContext.current;
     setError("");
     setBusy("선택한 하루를 다시 계획하고 있습니다");
     try {
@@ -301,6 +347,12 @@ export default function Home() {
         date: trip.days[day].date,
         instruction: request,
       });
+      if (tripRef.current !== original || revisionContext.current !== context) {
+        setNotice(
+          "여행이나 선택 화면이 바뀌어 이전 조건의 수정안을 적용하지 않았습니다. 현재 내용으로 다시 요청해 주세요.",
+        );
+        return;
+      }
       const t = tripSchema.parse(result.result);
       const issues = validateTrip(t, trip);
       if (issues.some((s) => s.includes("고정")))
@@ -317,6 +369,10 @@ export default function Home() {
     target?: Trip,
   ) {
     try {
+      if (recoveryBlocked.current && (action === "load" || action === "delete"))
+        throw new Error(
+          "원본 보호를 위해 보관 목록 변경을 중단했습니다. 복구용 JSON을 내려받고 저장 공간을 확보해 주세요.",
+        );
       const { getSupabase } = await import("../lib/supabase");
       const client = getSupabase();
       if (!client)
@@ -1116,6 +1172,7 @@ export default function Home() {
                       key={d.date}
                       className={day === i ? "active" : ""}
                       onClick={() => {
+                        revisionContext.current++;
                         setDay(i);
                         setCandidate(null);
                       }}
@@ -1369,6 +1426,26 @@ export default function Home() {
         )}
         {view === "library" && (
           <section className="content-wrap">
+            {recoveryBackup && (
+              <div role="status">
+                <p>
+                  형식이 맞지 않는 저장본의 원본을 보존했습니다. 복구용 파일은
+                  개인정보를 포함할 수 있으므로 직접 보관해 주세요.
+                </p>
+                <button
+                  className="secondary"
+                  onClick={() =>
+                    downloadFile(
+                      recoveryBackup,
+                      "travel-recovery.json",
+                      "application/json",
+                    )
+                  }
+                >
+                  복구용 JSON 다운로드
+                </button>
+              </div>
+            )}
             <div className="section-heading">
               <div>
                 <p>다시 펼쳐볼 여행</p>
@@ -1433,6 +1510,12 @@ export default function Home() {
                     <button
                       aria-label={`${t.title} 삭제`}
                       onClick={() => {
+                        if (recoveryBlocked.current) {
+                          setError(
+                            "원본 보호를 위해 삭제를 중단했습니다. 복구용 JSON을 내려받고 저장 공간을 확보해 주세요.",
+                          );
+                          return;
+                        }
                         if (
                           !window.confirm(
                             "이 브라우저에 보관한 여행을 삭제할까요?",

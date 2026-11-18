@@ -1,6 +1,129 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
 import { examples } from "../src/lib/examples";
+test("잘못된 편집 저장을 거절하고 마지막 정상 보관본을 유지한다", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: /한 도시에서, 조금 더 깊이 Hiroshima/ })
+    .click();
+  await page.getByRole("button", { name: "보관", exact: true }).click();
+  const saved = await page.evaluate(() =>
+    localStorage.getItem("travel-books-v1"),
+  );
+  await page.getByRole("button", { name: "일정 다듬기", exact: true }).click();
+  await page.getByLabel("활동 1 이름", { exact: true }).fill("");
+  await page.getByRole("button", { name: "보관", exact: true }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "이전 보관본은 유지됩니다" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => localStorage.getItem("travel-books-v1")),
+  ).toBe(saved);
+  await page.reload();
+  await page.getByRole("button", { name: "내 여행책", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /바다 곁에서, 히로시마.*버전/ }),
+  ).toBeVisible();
+});
+test("형식이 잘못된 보관본도 복구용 원본을 남긴다", async ({ page }) => {
+  const invalid = structuredClone(examples[0]);
+  invalid.days[0].activities[0].title = "";
+  await page.addInitScript(
+    (trip) => localStorage.setItem("travel-books-v1", JSON.stringify([trip])),
+    invalid,
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "내 여행책", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "복구용 JSON 다운로드" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("travel-books-recovery-v1")!),
+    ),
+  ).toEqual([invalid]);
+});
+test("복구본 저장 공간이 없어도 원본 다운로드와 덮어쓰기 차단을 유지한다", async ({
+  page,
+}) => {
+  const invalid = structuredClone(examples[0]);
+  invalid.days[0].activities[0].title = "";
+  await page.addInitScript((trip) => {
+    localStorage.setItem("travel-books-v1", JSON.stringify([trip]));
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "travel-books-recovery-v1")
+        throw new DOMException("quota", "QuotaExceededError");
+      return original.call(this, key, value);
+    };
+  }, invalid);
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: /한 도시에서, 조금 더 깊이 Hiroshima/ })
+    .click();
+  await page.getByRole("button", { name: "보관", exact: true }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "기존 원본 보호" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("travel-books-v1")!),
+    ),
+  ).toEqual([invalid]);
+  await page.getByRole("button", { name: "내 여행책", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "복구용 JSON 다운로드" }),
+  ).toBeVisible();
+});
+test("수정 요청 중 직접 바꾼 내용은 늦은 AI 응답으로 덮어쓰지 않는다", async ({
+  page,
+}) => {
+  let release!: () => void;
+  const wait = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let arrived!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    arrived = resolve;
+  });
+  await page.route("**/api/agent", async (route) => {
+    const { payload } = route.request().postDataJSON();
+    arrived();
+    await wait;
+    payload.trip.days[0].activities[0].title = "늦게 도착한 수정";
+    await route.fulfill({ json: { result: payload.trip } });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "API 키 설정", exact: true }).click();
+  await page
+    .getByLabel("API 키", { exact: true })
+    .fill("test-only-stale-revision");
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
+  await page
+    .getByRole("button", { name: /한 도시에서, 조금 더 깊이 Hiroshima/ })
+    .click();
+  await page.getByRole("button", { name: "일정 다듬기", exact: true }).click();
+  await page
+    .getByPlaceholder("걷는 시간을 줄이고, 카페에서 쉬는 시간을 늘려주세요.")
+    .fill("휴식 늘리기");
+  await page.getByRole("button", { name: "수정안 만들기" }).click();
+  await pending;
+  await page
+    .getByLabel("활동 1 이름", { exact: true })
+    .fill("내가 직접 바꾼 일정");
+  release();
+  await expect(
+    page.getByRole("button", { name: "중단", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel("활동 1 이름", { exact: true })).toHaveValue(
+    "내가 직접 바꾼 일정",
+  );
+  await expect(
+    page.getByRole("button", { name: "적용", exact: true }),
+  ).toHaveCount(0);
+});
 test("식당·숙박 후보의 비교 정보와 출처를 모바일에서도 읽는다", async ({
   page,
 }) => {
