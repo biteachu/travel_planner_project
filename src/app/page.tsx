@@ -91,7 +91,10 @@ export default function Home() {
   const tripRef = useRef<Trip | null>(null);
   const revisionContext = useRef(0);
   const [outline, setOutline] = useState<Outline | null>(null);
-  const [library, setLibrary] = useState<Trip[]>([]);
+  const [library, setLibraryState] = useState<Trip[]>([]);
+  const libraryRef = useRef<Trip[]>([]);
+  const accountPending = useRef(false);
+  const [accountBusy, setAccountBusy] = useState(false);
   const [recoveryBackup, setRecoveryBackup] = useState<string | null>(null);
   const recoveryBlocked = useRef(false);
   const [step, setStep] = useState(0);
@@ -215,7 +218,10 @@ export default function Home() {
       );
       return false;
     }
-    const next = [validated.data, ...library.filter((x) => x.id !== t.id)];
+    const next = [
+      validated.data,
+      ...libraryRef.current.filter((x) => x.id !== t.id),
+    ];
     try {
       localStorage.setItem("travel-books-v1", JSON.stringify(next));
       setLibrary(next);
@@ -229,6 +235,10 @@ export default function Home() {
       setError("브라우저 저장 공간이 부족합니다. JSON 파일로 내보내 주세요.");
       return false;
     }
+  }
+  function setLibrary(next: Trip[]) {
+    libraryRef.current = next;
+    setLibraryState(next);
   }
   function setTrip(next: Trip | null) {
     tripRef.current = next;
@@ -387,6 +397,12 @@ export default function Home() {
     action: "login" | "save" | "load" | "logout" | "delete",
     target?: Trip,
   ) {
+    if (accountPending.current) return;
+    accountPending.current = true;
+    setAccountBusy(true);
+    const initialLibrary = libraryRef.current;
+    const initialTrip = tripRef.current;
+    const initialContext = revisionContext.current;
     try {
       if (recoveryBlocked.current && (action === "load" || action === "delete"))
         throw new Error(
@@ -420,13 +436,13 @@ export default function Home() {
           data: { user },
         } = await client.auth.getUser();
         if (!user) throw new Error("이메일 링크로 먼저 로그인해 주세요.");
-        if (action === "save" && trip) {
-          const validated = tripSchema.parse(trip);
+        if (action === "save" && initialTrip) {
+          const validated = tripSchema.parse(initialTrip);
           const { error } = await client.from("trips").upsert(
             {
-              id: trip.id,
+              id: validated.id,
               owner_id: user.id,
-              title: trip.title,
+              title: validated.title,
               data: validated,
               updated_at: new Date().toISOString(),
             },
@@ -434,7 +450,9 @@ export default function Home() {
           );
           if (error) throw error;
           setNotice(
-            "계정에 여행을 저장했습니다. 변경된 저장본은 버전 기록으로 보존됩니다.",
+            tripRef.current === initialTrip
+              ? "계정에 여행을 저장했습니다. 변경된 저장본은 버전 기록으로 보존됩니다."
+              : "저장을 요청한 시점의 여행을 계정에 저장했습니다. 그 뒤의 편집 내용은 다시 저장해 주세요.",
           );
         }
         if (action === "delete" && target) {
@@ -444,9 +462,16 @@ export default function Home() {
             .eq("owner_id", user.id)
             .eq("id", target.id);
           if (error) throw error;
-          const next = library.filter((item) => item.id !== target.id);
-          setLibrary(next);
-          if (trip?.id === target.id) setTrip(null);
+          if (recoveryBlocked.current)
+            throw new Error(
+              "계정 삭제는 완료했습니다. 복구 원본 보호를 위해 브라우저 보관본은 유지했습니다.",
+            );
+          const changedLocally = libraryRef.current.some(
+            (item) => item.id === target.id && item !== target,
+          );
+          const next = libraryRef.current.filter(
+            (item) => item.id !== target.id || changedLocally,
+          );
           try {
             localStorage.setItem("travel-books-v1", JSON.stringify(next));
           } catch {
@@ -454,8 +479,16 @@ export default function Home() {
               "계정 삭제는 완료했지만 브라우저 보관본을 지우지 못했습니다. 브라우저 저장소 설정을 확인해 주세요.",
             );
           }
+          setLibrary(next);
+          if (
+            tripRef.current?.id === target.id &&
+            revisionContext.current === initialContext
+          )
+            setTrip(null);
           setNotice(
-            "계정의 여행·버전 기록과 이 브라우저의 보관본을 삭제했습니다. 다른 기기에 따로 보관한 파일은 남아 있을 수 있습니다.",
+            changedLocally
+              ? "계정의 여행·버전 기록을 삭제했습니다. 요청 후 새로 보관한 브라우저 수정본은 유지했습니다."
+              : "계정의 여행·버전 기록과 이 브라우저의 보관본을 삭제했습니다. 다른 기기에 따로 보관한 파일은 남아 있을 수 있습니다.",
           );
         }
         if (action === "load") {
@@ -465,9 +498,15 @@ export default function Home() {
             .order("updated_at", { ascending: false });
           if (error) throw error;
           const loaded = (data || []).map((r) => tripSchema.parse(r.data));
+          if (recoveryBlocked.current || libraryRef.current !== initialLibrary)
+            throw new Error(
+              "불러오는 동안 브라우저 보관 목록이 변경되어 현재 내용을 유지했습니다. 계정 여행 불러오기를 다시 눌러 주세요.",
+            );
           const next = [
             ...loaded,
-            ...library.filter((t) => !loaded.some((x) => x.id === t.id)),
+            ...libraryRef.current.filter(
+              (t) => !loaded.some((x) => x.id === t.id),
+            ),
           ];
           localStorage.setItem("travel-books-v1", JSON.stringify(next));
           setLibrary(next);
@@ -476,6 +515,9 @@ export default function Home() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "계정 요청 실패");
+    } finally {
+      accountPending.current = false;
+      setAccountBusy(false);
     }
   }
   const field = (name: keyof Brief, value: unknown) =>
@@ -1146,7 +1188,9 @@ export default function Home() {
                   <Save size={16} />
                   보관
                 </button>
-                <button onClick={() => account("save")}>계정 저장</button>
+                <button disabled={accountBusy} onClick={() => account("save")}>
+                  계정 저장
+                </button>
                 <button
                   onClick={() =>
                     downloadFile(
@@ -1571,6 +1615,7 @@ export default function Home() {
                       복제
                     </button>
                     <button
+                      disabled={accountBusy}
                       aria-label={`${t.title} 계정에서도 삭제`}
                       onClick={() => {
                         if (
@@ -1602,13 +1647,25 @@ export default function Home() {
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </label>
-              <button className="secondary" onClick={() => account("login")}>
+              <button
+                disabled={accountBusy}
+                className="secondary"
+                onClick={() => account("login")}
+              >
                 로그인 링크 받기
               </button>
-              <button className="secondary" onClick={() => account("load")}>
+              <button
+                disabled={accountBusy}
+                className="secondary"
+                onClick={() => account("load")}
+              >
                 계정 여행 불러오기
               </button>
-              <button className="secondary" onClick={() => account("logout")}>
+              <button
+                disabled={accountBusy}
+                className="secondary"
+                onClick={() => account("logout")}
+              >
                 로그아웃
               </button>
             </div>

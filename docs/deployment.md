@@ -37,6 +37,25 @@ npm run test:e2e -- --grep '키 없이 예시'
 Remove-Item Env:PLAYWRIGHT_BASE_URL
 ```
 
+## 계정 응답 지연의 로컬 회귀 검사
+
+실제 계정 없이 저장·불러오기·삭제 중 사용자의 편집을 검사하려면 별도 PowerShell에서 아래 개발 서버를 시작한다. 아래 값은 테스트용 가짜 설정이며 배포 환경에는 사용하지 않는다.
+
+```powershell
+$env:NEXT_PUBLIC_SUPABASE_URL = 'https://account-test.supabase.co'
+$env:NEXT_PUBLIC_SUPABASE_ANON_KEY = 'mock-public-key'
+npm run dev -- --hostname 127.0.0.1 --port 3102
+```
+
+다른 PowerShell에서 실행한다. 테스트는 이 호스트의 인증·DB 요청을 가로채 모의 응답을 반환한다. 실행 후 개발 서버를 종료한다. 실제 Supabase 인증·권한 검증과는 별개의 검사다.
+
+```powershell
+$env:PLAYWRIGHT_BASE_URL = 'http://127.0.0.1:3102'
+$env:RUN_ACCOUNT_MOCK = '1'
+npx playwright test e2e/account.spec.ts --workers=1
+Remove-Item Env:PLAYWRIGHT_BASE_URL, Env:RUN_ACCOUNT_MOCK
+```
+
 ## 실제 생성 검증
 
 본인 키를 웹앱에서 직접 입력해 단일 거점과 여러 거점 여행을 각각 생성한다. 문서 선택의 국가·도시 일치, 취향 반영, 확정 일정 보존, 자료 부족 표시, 식당·숙박 근거와 HTML 출처·라이선스를 확인한다. 중단 후 재개와 잘못된 키·할당량 오류도 확인한다. 키·개인 예약정보를 녹화나 화면 캡처에 포함하지 않는다.
