@@ -172,7 +172,11 @@ export async function runAgent(
       throw new Error("CONSTRAINT_VIOLATION");
     if (
       hasUnknownSources(
-        [...t.days.flatMap((day) => day.activities), ...t.stories],
+        [
+          ...t.days.flatMap((day) => day.activities),
+          ...t.stories,
+          ...(t.recommendations || []),
+        ],
         t.sources,
       )
     )
@@ -277,15 +281,22 @@ export async function runAgent(
   }
   if (stage === "curate") {
     const content = await json(
-      "가이드북 큐레이터·예산 역할: write Korean stories and practical tips from provided evidence only. Review category costs and note missing accommodation and unknown prices in warnings. Do not invent history, safety numbers or visa rules. Stories without verified historical evidence should be preference-based suggestions, clearly framed as suggestions.",
+      "가이드북 큐레이터·예산 역할: write Korean stories and practical tips from provided evidence only. Review category costs and note missing accommodation and unknown prices in warnings. Do not invent history, safety numbers or visa rules. Stories without verified historical evidence should be preference-based suggestions, clearly framed as suggestions. Produce recommendations grouped by city: dining main/alternative candidates fitting food preferences and route, lodging neighborhoods with tradeoffs, and specific hotels only when supported. Each candidate needs existing supporting sourceIds, a personalized reason, a tradeoff and explicit checks (opening dates, dietary suitability, booking availability). Aim for 2-3 lodging areas per overnight base and useful meal alternatives, but never invent candidates to fill a quota. Missing evidence means omit the candidate and explain the gap in warnings. Do not imply a reservation or live availability. Recommendations are optional choices, not additional scheduled activities or budget entries. Do not put unsourced prices in their text.",
       { trip: prior, research: input.research },
       z.object({
         stories: tripSchema.shape.stories,
+        recommendations: tripSchema.shape.recommendations.unwrap(),
         tips: tripSchema.shape.tips,
         warnings: tripSchema.shape.warnings,
       }),
     );
-    if (hasUnknownSources(content.stories, prior.sources))
+    if (
+      hasUnknownSources(
+        [...content.stories, ...content.recommendations],
+        prior.sources,
+      ) ||
+      content.recommendations.some((item) => !item.sourceIds.length)
+    )
       throw new Error("EVIDENCE_REFERENCE_INVALID");
     return {
       result: {

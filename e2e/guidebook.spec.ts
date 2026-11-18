@@ -1,6 +1,55 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
 import { examples } from "../src/lib/examples";
+test("식당·숙박 후보의 비교 정보와 출처를 모바일에서도 읽는다", async ({
+  page,
+}) => {
+  const trip = {
+    ...structuredClone(examples[0]),
+    title: "후보 비교 테스트",
+    sources: [
+      {
+        id: "evidence",
+        title: "테스트 근거",
+        url: "https://example.com/evidence",
+        provider: "웹",
+        checkedAt: "2026-11-18",
+      },
+    ],
+    recommendations: ["식당", "숙박 지역"].map((kind) => ({
+      kind,
+      city: "히로시마",
+      name: `${kind} 테스트 후보`,
+      reason: "많이 걷지 않는 취향을 반영한 제안",
+      tradeoff: "도심 접근성과 주변 혼잡도를 비교해 주세요",
+      checks: ["방문 날짜의 영업 및 이용 가능 여부"],
+      sourceIds: ["evidence"],
+    })),
+  };
+  await page.addInitScript(
+    (value) => localStorage.setItem("travel-books-v1", JSON.stringify([value])),
+    trip,
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "내 여행책", exact: true }).click();
+  await page.getByRole("button", { name: /후보 비교 테스트.*버전/ }).click();
+  await page.getByRole("link", { name: "먹을 곳", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "식당 테스트 후보", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.locator("#dining").getByRole("link", { name: "테스트 근거" }),
+  ).toHaveAttribute("href", "https://example.com/evidence");
+  await page.getByRole("link", { name: "머무를 곳", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "숙박 지역 테스트 후보", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
 test("생성 중단은 완료 날짜를 보존하고 재개 시 남은 날짜만 요청한다", async ({
   page,
 }) => {

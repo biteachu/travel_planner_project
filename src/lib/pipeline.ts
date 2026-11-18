@@ -195,7 +195,14 @@ export async function advancePipeline(
       })
       .parse(response);
     const next = parsed.result;
-    if (hasUnknownSources(next.stories, state.research?.sources || []))
+    if (
+      hasUnknownSources(
+        [...next.stories, ...(next.recommendations || [])],
+        state.research?.sources || [],
+      ) ||
+      (state.phase === "curate" &&
+        next.recommendations?.some((item) => !item.sourceIds.length))
+    )
       throw new Error(
         "조사 자료에 없는 출처를 참조한 설명입니다. 다시 시도해 주세요.",
       );

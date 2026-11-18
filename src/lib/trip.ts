@@ -251,6 +251,15 @@ export const outlineSchema = z.object({
   questions: z.array(text).max(5),
 });
 export type Outline = z.infer<typeof outlineSchema>;
+export const recommendationSchema = z.object({
+  kind: z.enum(["식당", "숙박 지역", "숙소"]),
+  city: z.string().min(1).max(200),
+  name: z.string().min(1).max(300),
+  reason: text,
+  tradeoff: text,
+  checks: z.array(text).max(8),
+  sourceIds: z.array(z.string().max(200)).max(20),
+});
 export const tripSchema = z.object({
   id: z.string().min(1).max(100),
   version: z.number().int().positive(),
@@ -260,6 +269,7 @@ export const tripSchema = z.object({
   bases: z.array(baseSchema).max(15),
   days: z.array(daySchema).min(1).max(31),
   tips: z.array(text).max(30),
+  recommendations: z.array(recommendationSchema).max(90).optional(),
   stories: z
     .array(
       z.object({ title: text, body: text, sourceIds: z.array(z.string()) }),
@@ -359,6 +369,12 @@ export function validateTrip(t: Trip, previous?: Trip): string[] {
   for (const story of t.stories) {
     if (story.sourceIds.some((id) => !t.sources.some((s) => s.id === id)))
       issues.push(`${story.title}: 연결되지 않은 출처가 있습니다.`);
+  }
+  for (const candidate of t.recommendations || []) {
+    if (candidate.sourceIds.some((id) => !t.sources.some((s) => s.id === id)))
+      issues.push(`${candidate.name}: 연결되지 않은 출처가 있습니다.`);
+    if (!candidate.sourceIds.length)
+      issues.push(`${candidate.name}: 후보의 근거를 확인해 주세요.`);
   }
   for (const d of t.days) {
     issues.push(...dayConstraintIssues(t.brief, d));

@@ -39,6 +39,54 @@ export function Guidebook({
             </a>
           ),
       );
+  const candidates = (kind: "식당" | "숙박", city?: string) => {
+    const items = (trip.recommendations || []).filter(
+      (item) =>
+        (kind === "식당" ? item.kind === "식당" : item.kind !== "식당") &&
+        (!city || item.city === city),
+    );
+    return items.length ? (
+      items.map((item, index) => (
+        <div className="stay-row" key={`${item.city}-${item.name}-${index}`}>
+          <p className="section-kicker">
+            {item.city} · {item.kind} 후보 · 예약 미확정
+          </p>
+          <h3>{item.name}</h3>
+          {options.details && (
+            <>
+              <p>
+                <strong>추천 이유</strong> · {item.reason}
+              </p>
+              <p>
+                <strong>비교할 점</strong> · {item.tradeoff}
+              </p>
+              {item.checks.length > 0 && (
+                <p>
+                  <strong>선택 전 확인</strong> · {item.checks.join(" / ")}
+                </p>
+              )}
+            </>
+          )}
+          <p className="source-links">{sources(item.sourceIds)}</p>
+          {!item.sourceIds.length && (
+            <p>출처 미확인 · 직접 확인한 뒤 선택해 주세요.</p>
+          )}
+          <a
+            href={mapUrl(`${item.city} ${item.name}`)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            지도에서 후보 확인 ↗
+          </a>
+        </div>
+      ))
+    ) : (
+      <p>
+        근거가 연결된 {kind === "식당" ? "식당" : "숙박"} 후보가 아직 없습니다.
+        확인되지 않은 업체를 임의로 채우지 않았습니다.
+      </p>
+    );
+  };
   return (
     <article className="guidebook" lang="ko">
       <header className="book-cover">
@@ -70,6 +118,7 @@ export function Guidebook({
             {i + 1}일차
           </a>
         ))}
+        <a href="#dining">먹을 곳</a>
         {options.lodging && <a href="#stay">머무를 곳</a>}
         {options.budget && <a href="#budget">예산</a>}
         <a href="#prepare">준비와 출처</a>
@@ -198,6 +247,15 @@ export function Guidebook({
           </div>
         </details>
       ))}
+      <section id="dining">
+        <p className="section-kicker">입맛과 동선에 맞춰</p>
+        <h2>식당 후보 비교하기</h2>
+        <p>
+          일정에 넣기 전 비교하는 후보입니다. 후보의 비용은 예산에 별도로 더하지
+          않으며, 영업·메뉴·예약 가능 여부를 다시 확인해 주세요.
+        </p>
+        {candidates("식당")}
+      </section>
       {options.lodging && (
         <section id="stay">
           <p className="section-kicker">머무는 시간도 여행</p>
@@ -215,6 +273,11 @@ export function Guidebook({
               </a>
             </div>
           ))}
+          <p>
+            숙박 지역과 숙소 후보를 비교해 보세요. 아래 목록은 예약이나 추가
+            숙박 일정을 의미하지 않습니다.
+          </p>
+          {candidates("숙박")}
         </section>
       )}
       {options.budget && (
