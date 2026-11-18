@@ -130,8 +130,12 @@ export const sourceSchema = z.object({
   id: z.string().max(100),
   title: text,
   url: z.string().max(2000),
-  provider: z.enum(["Google Maps", "웹", "사용자", "예시"]),
+  provider: z.enum(["Google Maps", "Wikivoyage", "웹", "사용자", "예시"]),
   checkedAt: text,
+  license: z.literal("CC BY-SA 4.0").optional(),
+  attributionUrl: z.string().max(2000).optional(),
+  revision: z.number().int().positive().optional(),
+  revisedAt: z.string().max(100).optional(),
 });
 export const activitySchema = z.object({
   id: z.string().min(1).max(100),

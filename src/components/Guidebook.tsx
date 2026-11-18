@@ -375,6 +375,23 @@ export function Guidebook({
           ))}
         </ul>
         <h3>참고한 자료</h3>
+        {trip.sources.some((source) => source.license === "CC BY-SA 4.0") && (
+          <p className="fine-print">
+            Wikivoyage 기여자의 글을 한국어로 번역·요약하고 여행 조건에 맞게
+            재구성했습니다. 이 자료를 바탕으로 한 여행 안내 본문은{" "}
+            <a
+              href="https://creativecommons.org/licenses/by-sa/4.0/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              CC BY-SA 4.0
+            </a>
+            으로 제공합니다. 공유·변형 시 출처·기여자·라이선스·변경 표시를
+            유지하고 동일한 라이선스로 배포해 주세요. 개인 메모·예약정보를
+            공개하라는 의미는 아닙니다. 자료 조회일은 현재 영업·가격의 확인일이
+            아닙니다.
+          </p>
+        )}
         {trip.sources.length ? (
           trip.sources.map((s) => (
             <p key={s.id}>
@@ -389,6 +406,34 @@ export function Guidebook({
                 {s.provider}
               </span>{" "}
               / 확인: {s.checkedAt}
+              {s.license && (
+                <>
+                  <br />
+                  Wikivoyage 기여자 ·{" "}
+                  <a
+                    href="https://creativecommons.org/licenses/by-sa/4.0/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {s.license}
+                  </a>
+                  {s.attributionUrl && safeUrl(s.attributionUrl) && (
+                    <>
+                      {" "}
+                      ·{" "}
+                      <a
+                        href={safeUrl(s.attributionUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        기여자·문서 이력
+                      </a>
+                    </>
+                  )}
+                  {s.revision && <> · 문서 버전 {s.revision}</>}
+                  {s.revisedAt && <> · 원문 수정 {s.revisedAt.slice(0, 10)}</>}
+                </>
+              )}
             </p>
           ))
         ) : (

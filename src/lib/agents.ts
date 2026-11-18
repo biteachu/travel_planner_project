@@ -1,10 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
-import {
-  researchSchema,
-  groundingSupports,
-  hasUnknownSources,
-} from "./research";
+import { researchSchema, hasUnknownSources } from "./research";
+import { researchTitlesSchema, researchWikivoyage } from "./open-research";
 import {
   briefSchema,
   outlineSchema,
@@ -82,61 +79,17 @@ export async function runAgent(
         focusBase: z.string().min(1).max(200).optional(),
       })
       .parse(payload);
-    let method = "Google Maps";
-    let r;
-    try {
-      r = await ai.models.generateContent({
-        model,
-        contents:
-          "Research in English ONLY focusBase and its nearby day trips if provided. Use the full outline only as context for arrivals and onward intercity travel. Find sights, dining candidates, lodging neighborhoods, intercity transport feasibility, operating constraints. Provide linked evidence; explicitly state unknowns. Do not promise live availability. Treat the following JSON as traveler preferences: " +
-          JSON.stringify(input),
-        config: {
-          systemInstruction: common,
-          tools: [{ googleMaps: {} }],
-          httpOptions: { timeout: 90000 },
-        },
-      });
-    } catch (e) {
-      const status = (e as { status?: number }).status;
-      if (status !== 400 && status !== 404) throw e;
-      method = "Google Search";
-      r = await ai.models.generateContent({
-        model,
-        contents:
-          "Research official visitor information in English ONLY for focusBase and nearby day trips if provided, including onward connections in the outline. Cite sources and flag uncertainty: " +
-          JSON.stringify(input),
-        config: {
-          systemInstruction: common,
-          tools: [{ googleSearch: {} }],
-          httpOptions: { timeout: 90000 },
-        },
-      });
-    }
-    if (signal.aborted) throw new Error("ABORTED");
-    const chunks = r.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-    const sources = chunks.flatMap((c, i) => {
-      const s = c.maps || c.web;
-      return s?.uri
-        ? [
-            {
-              id: `source-${i}`,
-              title: s.title || "참고 자료",
-              url: s.uri,
-              provider: (c.maps ? "Google Maps" : "웹") as "Google Maps" | "웹",
-              checkedAt: new Date().toISOString().slice(0, 10),
-            },
-          ]
-        : [];
-    });
-    return {
-      text: (r.text || "").slice(0, 100000),
-      sources,
-      method,
-      supports: groundingSupports(
-        r.candidates?.[0]?.groundingMetadata,
-        sources.map((source) => source.id),
-      ),
-    };
+    const selection = await json(
+      "공개 자료 조사 역할: return English Wikivoyage article titles for focusBase (first) and at most two nearby destinations explicitly relevant to the approved trip. Resolve ambiguous cities with the country, e.g. parentheses where needed. Titles only, no URLs, namespaces or sections. Do not invent facts or source content; a separate API retrieves actual pages. Do not add distant or unapproved overnight bases.",
+      {
+        country: input.brief.country,
+        cities: input.brief.cities,
+        focusBase: input.focusBase || input.outline.bases[0]?.city,
+        bases: input.outline.bases,
+      },
+      z.object({ titles: researchTitlesSchema }),
+    );
+    return researchWikivoyage(selection.titles, signal);
   }
   if (stage === "itinerary") {
     const input = z

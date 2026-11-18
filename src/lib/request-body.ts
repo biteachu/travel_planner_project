@@ -1,7 +1,10 @@
 export class RequestTooLarge extends Error {}
 
 // Bound bytes while reading, including requests without a trustworthy length header.
-export async function readLimitedBody(request: Request, limit = 350000) {
+export async function readLimitedBody(
+  request: Pick<Request, "headers" | "body">,
+  limit = 350000,
+) {
   const declared = request.headers.get("content-length");
   if (declared && /^\d+$/.test(declared) && Number(declared) > limit) {
     await request.body?.cancel().catch(() => {});

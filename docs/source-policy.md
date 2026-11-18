@@ -16,7 +16,11 @@
 
 ## 구현 현황과 다음 확인
 
-현재 코드의 Maps 조사 → Search 대체 경로는 남아 있으며 공개 서비스 적합성 검증을 통과하지 않았다. 예시 데이터로 수행한 HTML 테스트는 외부 조사 자료의 사용 허가를 증명하지 않는다.
+현재 코드에서 Maps 조사 → Search 대체 호출을 제거하고 Wikivoyage 본문 조회로 교체했다. Gemini는 문서명 선택과 이후 계획·검토를 담당한다. 원문·버전·기여자 이력 링크, CC BY-SA 4.0과 번역·재구성 표시를 저장 및 HTML 출력에 포함한다. 자료가 없는 문서는 출처로 등록하지 않는다. 사진은 가져오지 않는다.
+
+실제 API에서 Hiroshima·Istanbul·Cappadocia 세 문서의 본문과 버전을 읽는 테스트를 통과했다. 여러 문서를 묶은 요청에서 일부 본문만 반환되는 경우를 확인하여 문서별 순차 조회로 변경했다. 요청마다 시간·응답 크기 제한을 적용하고 서비스 오류를 빈 자료로 숨기지 않는다. 이 검증은 Gemini의 문서명 선택 정확성이나 개별 업체의 현재 영업 확인을 대신하지 않는다.
+
+PowerShell에서 `$env:RUN_LIVE_RESEARCH='1'; npm run test -- tests/open-research.test.ts`로 실제 API 검증을 실행할 수 있다. 일반 테스트에서는 네트워크 검증을 건너뛴다. 외부 API의 자료·응답 속도에 따라 결과가 달라질 수 있다.
 
 다음 작업에서는 후보 자료마다 다음을 확인한다.
 
@@ -37,4 +41,4 @@
 
 히로시마의 [여행 안내 문서](https://en.wikivoyage.org/wiki/Hiroshima)가 존재함을 확인했다. 문서의 존재만으로 개별 업체의 현재 영업이나 모든 여행지의 자료 충분성을 검증한 것은 아니다. 실제 추천에 사용하기 전 지역별 표본과 수정 시점을 확인한다.
 
-Wikimedia 자동 요청에는 설명적인 User-Agent와 연락 가능한 프로젝트 정보가 필요하다. [User-Agent 정책](https://foundation.wikimedia.org/wiki/Policy:User-Agent_policy). 구현 전 요청 한도·재시도·캐시·API 응답 형태도 검증한다. 현재는 후보 비교이며 조사 제공사를 전환한 상태가 아니다.
+Wikimedia 자동 요청에는 설명적인 User-Agent와 연락 가능한 프로젝트 정보가 필요하다. [User-Agent 정책](https://foundation.wikimedia.org/wiki/Policy:User-Agent_policy). 요청에는 프로젝트 이름·저장소 URL을 넣고 maxlag를 사용한다. 공개 배포의 트래픽·캐시·분산 호출 제한 검증은 남아 있다. Wikidata는 현재 어댑터에 연결하지 않았다.

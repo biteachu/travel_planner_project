@@ -210,7 +210,12 @@ test("식당·숙박 후보의 비교 정보와 출처를 모바일에서도 읽
         id: "evidence",
         title: "테스트 근거",
         url: "https://example.com/evidence",
-        provider: "웹",
+        provider: "Wikivoyage",
+        license: "CC BY-SA 4.0",
+        attributionUrl:
+          "https://en.wikivoyage.org/w/index.php?title=Test&action=history",
+        revision: 123,
+        revisedAt: "2026-11-18T00:00:00Z",
         checkedAt: "2026-11-18",
       },
     ],
@@ -242,6 +247,10 @@ test("식당·숙박 후보의 비교 정보와 출처를 모바일에서도 읽
   await expect(
     page.getByRole("heading", { name: "숙박 지역 테스트 후보", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.locator("#prepare").getByRole("link", { name: "기여자·문서 이력" }),
+  ).toHaveAttribute("href", /action=history/);
+  await expect(page.locator("#prepare")).toContainText("한국어로 번역·요약");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

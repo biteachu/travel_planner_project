@@ -68,14 +68,33 @@ export function mergeResearch(
         : [];
     });
   const textLimit = Math.floor(90000 / total);
+  const remappedText = incoming.sources.reduce(
+    (text, source) =>
+      text.replaceAll(
+        `[SOURCE ${source.id};`,
+        `[SOURCE base-${index}-${source.id};`,
+      ),
+    incoming.text,
+  );
   const truncated =
     incoming.text.length > textLimit ||
     incoming.sources.length > sourceLimit ||
     (incoming.supports || []).length > Math.floor(100 / total);
+  const sections = remappedText
+    .split(/(?=^\[SOURCE |^== [^=\n]+ ==\s*$)/m)
+    .filter(Boolean);
+  const sectionBudget = Math.max(
+    1,
+    Math.floor(textLimit / Math.max(1, sections.length)) - 2,
+  );
+  const balancedText = sections
+    .map((section) => section.slice(0, sectionBudget))
+    .join("\n\n")
+    .slice(0, textLimit);
   return researchSchema.parse({
     text: [
       previous?.text,
-      `\n[${city}]\n${incoming.text.slice(0, textLimit)}${truncated ? "\n[일부 조사 자료는 길이 제한으로 생략되었습니다. 포함된 출처만 사용하고 부족한 정보는 확인 필요로 표시하세요.]" : ""}`,
+      `\n[${city}]\n${balancedText}${truncated ? "\n[일부 조사 자료는 길이 제한으로 생략되었습니다. 포함된 출처만 사용하고 부족한 정보는 확인 필요로 표시하세요.]" : ""}`,
     ]
       .filter(Boolean)
       .join("\n"),

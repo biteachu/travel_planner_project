@@ -70,6 +70,14 @@ export function ExportDialog({
               </label>
             ))}
           </fieldset>
+          {trip.sources.some((source) => source.license === "CC BY-SA 4.0") && (
+            <p className="quiet-note">
+              공개 여행 자료를 번역·재구성한 안내 본문에는 CC BY-SA 4.0이
+              적용됩니다. 파일을 공유·변형할 때 출처·기여자·라이선스·변경 표시와
+              동일조건 배포 요건을 유지해 주세요. 관련 표시는 파일에 함께
+              포함됩니다.
+            </p>
+          )}
           <p className="quiet-note">
             날짜·도시·활동 제목·출처·확인 사항은 유지됩니다. 숙박 정보를
             제외해도 다른 문장이나 출처에 숙소명이 남을 수 있습니다. API 키와
