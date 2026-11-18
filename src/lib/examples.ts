@@ -1,5 +1,181 @@
-import {type Trip,type Brief,type Activity,datesBetween} from './trip';
-const baseBrief:Brief={country:'일본',cities:'히로시마, 미야지마, 오노미치',startDate:'2026-12-18',endDate:'2026-12-22',people:2,rooms:1,budget:1800000,currency:'KRW',pace:'여유롭게',interests:['동네 산책','로컬 음식','문화·역사'],preferences:'작은 골목과 바다를 바라보는 시간. 여유 있는 식사.',avoid:'너무 이른 출발, 빽빽한 일정',arrival:'오후 도착',departure:'오후 출발',reservations:''};
-const activity=(id:string,time:string,title:string,kind:Activity['kind'],description:string):Activity=>({id,time,title,kind,description,duration:60,reason:'산책과 휴식을 좋아하는 여행자를 위한 예시입니다.',transport:'실제 교통편·이동 시간은 출발 전에 확인해 주세요.',cost:null,costStatus:'미확인',locked:false,sourceIds:[],alternative:'피곤하면 인근에서 쉬고 다음 일정을 줄여 보세요.'});
-function makeExample(id:string,title:string,brief:Brief,cities:string[],titles:string[],places:string[][]):Trip{return {id,version:1,title,summary:'서두르지 않고, 도시의 일상 가까이. 취향을 따라 걷고 머무는 여행의 예시 가이드북입니다.',brief,bases:id==='hiroshima'?[{city:'히로시마',nights:4,reason:'한 숙소에 머물며 근교를 방문하는 구성 예시',neighborhood:'역 주변과 도심의 이동 편의를 비교해 보세요.'}]:[{city:'이스탄불',nights:5,reason:'도시를 충분히 둘러보는 거점 예시',neighborhood:'교통 접근성과 소음을 비교해 보세요.'},{city:'카파도키아',nights:4,reason:'주변 풍경과 마을을 탐방하는 구성 예시',neighborhood:'투어 출발지와 이동 편의를 확인해 주세요.'},{city:'안탈리아',nights:4,reason:'여행 후반 휴식을 위한 구성 예시',neighborhood:'해변 접근성과 구시가지 동선을 비교해 보세요.'}],days:datesBetween(brief.startDate,brief.endDate).map((date,i)=>({date,title:titles[i%titles.length],city:cities[Math.min(i,cities.length-1)],activities:[activity(`${id}-${i}-a`,'10:00',places[i%places.length][0],'관광','주변을 천천히 둘러보는 시간입니다. 영업시간·휴무·입장료는 확인되지 않은 예시입니다.'),activity(`${id}-${i}-b`,'12:30',places[i%places.length][1],'식사','좋아하는 메뉴와 피하는 음식을 기준으로 식당을 정해 보세요. 특정 식당을 예약한 일정이 아닙니다.'),activity(`${id}-${i}-c`,'15:00',places[i%places.length][2],'휴식','마음에 드는 풍경 앞에서 잠시 쉬어가는 시간입니다.')]})),tips:['이 가이드북은 기능 체험용 예시이며 실제 여행에 맞춰 조사된 결과가 아닙니다.','운영시간·교통편·가격과 당일 날씨는 출발 전에 확인해 주세요.','지도와 출처 링크를 열려면 인터넷 연결이 필요합니다.'],stories:[{title:'여행의 속도를 정하는 법',body:'하루에 꼭 하고 싶은 일을 먼저 고르고 나머지는 선택으로 남겨 두세요. 좋아하는 장소에서 더 오래 머물 수 있습니다.',sourceIds:[]}],sources:[],warnings:['예시 데이터입니다. 장소·가격·이동의 최신성을 검증한 여행 계획이 아닙니다.'],status:'확인 필요',isExample:true,updatedAt:'2026-11-18T00:00:00Z'};}
-export const examples:Trip[]=[makeExample('hiroshima','바다 곁에서, 히로시마',baseBrief,['히로시마','미야지마','히로시마','오노미치','히로시마'],['도시에 천천히 도착하기','섬의 풍경을 따라','좋아하는 동네를 발견하기','골목과 바다 사이','다음 여행을 위한 여백'],[['히로시마 도심 산책','취향에 맞는 점심','강변에서 쉬어가기'],['미야지마 산책','섬에서 점심','바다를 바라보는 시간'],['도심 문화 공간','로컬 음식 탐색','작은 카페'],['오노미치 골목','동네 식당','바닷가 휴식'],['마지막 동네 산책','가벼운 점심','출발 준비']]),makeExample('turkiye','세 도시를 잇는, 튀르키예',{...baseBrief,country:'튀르키예',cities:'이스탄불, 카파도키아, 안탈리아',startDate:'2027-01-01',endDate:'2027-01-14',budget:4500000},Array.from({length:14},(_,i)=>i<5?'이스탄불':i<9?'카파도키아':'안탈리아'),['여행의 첫 장','도시 가까이 걷기','풍경 속에 머무르기','다음 거점으로','여유로운 하루'],[['동네 탐방','현지 음식 탐색','휴식과 다음 일정 확인'],['문화 공간 산책','골목 식당 찾기','느긋한 오후']])];
+import { type Trip, type Brief, type Activity, datesBetween } from "./trip";
+const baseBrief: Brief = {
+  country: "일본",
+  cities: "히로시마, 미야지마, 오노미치",
+  startDate: "2026-12-18",
+  endDate: "2026-12-22",
+  people: 2,
+  rooms: 1,
+  budget: 1800000,
+  currency: "KRW",
+  pace: "여유롭게",
+  interests: ["동네 산책", "로컬 음식", "문화·역사"],
+  preferences: "작은 골목과 바다를 바라보는 시간. 여유 있는 식사.",
+  avoid: "너무 이른 출발, 빽빽한 일정",
+  arrival: "오후 도착",
+  departure: "오후 출발",
+  reservations: "",
+};
+const activity = (
+  id: string,
+  time: string,
+  title: string,
+  kind: Activity["kind"],
+  description: string,
+): Activity => ({
+  id,
+  time,
+  title,
+  kind,
+  description,
+  duration: 60,
+  reason: "산책과 휴식을 좋아하는 여행자를 위한 예시입니다.",
+  transport: "실제 교통편·이동 시간은 출발 전에 확인해 주세요.",
+  cost: null,
+  costStatus: "미확인",
+  locked: false,
+  sourceIds: [],
+  alternative: "피곤하면 인근에서 쉬고 다음 일정을 줄여 보세요.",
+});
+function makeExample(
+  id: string,
+  title: string,
+  brief: Brief,
+  cities: string[],
+  titles: string[],
+  places: string[][],
+): Trip {
+  return {
+    id,
+    version: 1,
+    title,
+    summary:
+      "서두르지 않고, 도시의 일상 가까이. 취향을 따라 걷고 머무는 여행의 예시 가이드북입니다.",
+    brief,
+    bases:
+      id === "hiroshima"
+        ? [
+            {
+              city: "히로시마",
+              nights: 4,
+              reason: "한 숙소에 머물며 근교를 방문하는 구성 예시",
+              neighborhood: "역 주변과 도심의 이동 편의를 비교해 보세요.",
+            },
+          ]
+        : [
+            {
+              city: "이스탄불",
+              nights: 5,
+              reason: "도시를 충분히 둘러보는 거점 예시",
+              neighborhood: "교통 접근성과 소음을 비교해 보세요.",
+            },
+            {
+              city: "카파도키아",
+              nights: 4,
+              reason: "주변 풍경과 마을을 탐방하는 구성 예시",
+              neighborhood: "투어 출발지와 이동 편의를 확인해 주세요.",
+            },
+            {
+              city: "안탈리아",
+              nights: 4,
+              reason: "여행 후반 휴식을 위한 구성 예시",
+              neighborhood: "해변 접근성과 구시가지 동선을 비교해 보세요.",
+            },
+          ],
+    days: datesBetween(brief.startDate, brief.endDate).map((date, i) => ({
+      date,
+      title: titles[i % titles.length],
+      city: cities[Math.min(i, cities.length - 1)],
+      activities: [
+        activity(
+          `${id}-${i}-a`,
+          "10:00",
+          places[i % places.length][0],
+          "관광",
+          "주변을 천천히 둘러보는 시간입니다. 영업시간·휴무·입장료는 확인되지 않은 예시입니다.",
+        ),
+        activity(
+          `${id}-${i}-b`,
+          "12:30",
+          places[i % places.length][1],
+          "식사",
+          "좋아하는 메뉴와 피하는 음식을 기준으로 식당을 정해 보세요. 특정 식당을 예약한 일정이 아닙니다.",
+        ),
+        activity(
+          `${id}-${i}-c`,
+          "15:00",
+          places[i % places.length][2],
+          "휴식",
+          "마음에 드는 풍경 앞에서 잠시 쉬어가는 시간입니다.",
+        ),
+      ],
+    })),
+    tips: [
+      "이 가이드북은 기능 체험용 예시이며 실제 여행에 맞춰 조사된 결과가 아닙니다.",
+      "운영시간·교통편·가격과 당일 날씨는 출발 전에 확인해 주세요.",
+      "지도와 출처 링크를 열려면 인터넷 연결이 필요합니다.",
+    ],
+    stories: [
+      {
+        title: "여행의 속도를 정하는 법",
+        body: "하루에 꼭 하고 싶은 일을 먼저 고르고 나머지는 선택으로 남겨 두세요. 좋아하는 장소에서 더 오래 머물 수 있습니다.",
+        sourceIds: [],
+      },
+    ],
+    sources: [],
+    warnings: [
+      "예시 데이터입니다. 장소·가격·이동의 최신성을 검증한 여행 계획이 아닙니다.",
+    ],
+    status: "확인 필요",
+    isExample: true,
+    updatedAt: "2026-11-18T00:00:00Z",
+  };
+}
+export const examples: Trip[] = [
+  makeExample(
+    "hiroshima",
+    "바다 곁에서, 히로시마",
+    baseBrief,
+    ["히로시마", "미야지마", "히로시마", "오노미치", "히로시마"],
+    [
+      "도시에 천천히 도착하기",
+      "섬의 풍경을 따라",
+      "좋아하는 동네를 발견하기",
+      "골목과 바다 사이",
+      "다음 여행을 위한 여백",
+    ],
+    [
+      ["히로시마 도심 산책", "취향에 맞는 점심", "강변에서 쉬어가기"],
+      ["미야지마 산책", "섬에서 점심", "바다를 바라보는 시간"],
+      ["도심 문화 공간", "로컬 음식 탐색", "작은 카페"],
+      ["오노미치 골목", "동네 식당", "바닷가 휴식"],
+      ["마지막 동네 산책", "가벼운 점심", "출발 준비"],
+    ],
+  ),
+  makeExample(
+    "turkiye",
+    "세 도시를 잇는, 튀르키예",
+    {
+      ...baseBrief,
+      country: "튀르키예",
+      cities: "이스탄불, 카파도키아, 안탈리아",
+      startDate: "2027-01-01",
+      endDate: "2027-01-14",
+      budget: 4500000,
+    },
+    Array.from({ length: 14 }, (_, i) =>
+      i < 5 ? "이스탄불" : i < 9 ? "카파도키아" : "안탈리아",
+    ),
+    [
+      "여행의 첫 장",
+      "도시 가까이 걷기",
+      "풍경 속에 머무르기",
+      "다음 거점으로",
+      "여유로운 하루",
+    ],
+    [
+      ["동네 탐방", "현지 음식 탐색", "휴식과 다음 일정 확인"],
+      ["문화 공간 산책", "골목 식당 찾기", "느긋한 오후"],
+    ],
+  ),
+];
