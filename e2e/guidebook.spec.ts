@@ -1,5 +1,21 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
+test("미완성 여행 조건을 새로고침 후 복원하고 지운다", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "내 여행책 만들기" }).click();
+  await page.getByLabel("어느 나라로 떠나시나요?").fill("포르투갈");
+  await page.getByRole("button", { name: "다음 단계" }).click();
+  await page.reload();
+  await page.getByRole("button", { name: "내 여행책 만들기" }).click();
+  await expect(page.getByRole("button", { name: "2 나만의 취향" })).toHaveAttribute("aria-current", "step");
+  await page.getByRole("button", { name: "1 여행의 시작" }).click();
+  await expect(page.getByLabel("어느 나라로 떠나시나요?")).toHaveValue("포르투갈");
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "입력 초안 지우기" }).click();
+  await page.reload();
+  await page.getByRole("button", { name: "내 여행책 만들기" }).click();
+  await expect(page.getByLabel("어느 나라로 떠나시나요?")).toHaveValue("");
+});
 test("키 없이 예시를 편집·보관·다운로드하고 오프라인 열람한다", async ({
   page,
   context,

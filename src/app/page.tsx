@@ -41,6 +41,7 @@ import {
 } from "../lib/trip";
 import { downloadFile, exportGuidebook } from "../lib/export";
 import { guidebookCss } from "../lib/guidebook-style";
+import { draftKey, readDraft, encodeDraft } from "../lib/draft";
 import {
   checkpointSchema,
   createCheckpoint,
@@ -96,17 +97,28 @@ export default function Home() {
   const [events, setEvents] = useState<string[]>([]);
   const [email, setEmail] = useState("");
   const [checkpoint, setCheckpoint] = useState<Checkpoint | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftStatus, setDraftStatus] = useState("");
   const stopped = useRef(false);
   const controller = useRef<AbortController | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    try {
+      const draft = readDraft(localStorage.getItem(draftKey));
+      if (draft) {
+        setBrief(draft.brief);
+        setStep(draft.step);
+        setDraftStatus("이 브라우저의 입력 초안을 불러왔습니다.");
+      }
+    } catch {
+      setDraftStatus("브라우저 저장소를 사용할 수 없습니다. 입력은 현재 화면에만 유지됩니다.");
+    }
     try {
       const pending = checkpointSchema.safeParse(
         JSON.parse(localStorage.getItem("travel-pending-v1") || "null"),
       );
       if (pending.success) {
         setCheckpoint(pending.data);
-        setBrief(pending.data.brief);
         setOutline(pending.data.outline);
       }
       const data = JSON.parse(localStorage.getItem("travel-books-v1") || "[]");
@@ -123,7 +135,17 @@ export default function Home() {
         "저장된 여행을 읽지 못했습니다. JSON 백업 파일을 가져올 수 있습니다.",
       );
     }
+    setDraftReady(true);
   }, []);
+  useEffect(() => {
+    if (!draftReady || view !== "create") return;
+    try {
+      localStorage.setItem(draftKey, encodeDraft({ brief, step }));
+      setDraftStatus("입력 내용을 이 브라우저에 자동 보관했습니다.");
+    } catch {
+      setDraftStatus("입력 초안을 보관하지 못했습니다. 새로고침 전에 내용을 복사해 주세요.");
+    }
+  }, [brief, step, view, draftReady]);
   useEffect(() => {
     if (!notice) return;
     const t = setTimeout(() => setNotice(""), 6000);
@@ -576,7 +598,6 @@ export default function Home() {
                   <button
                     className="primary"
                     onClick={() => {
-                      setStep(0);
                       navigate("create");
                     }}
                   >
@@ -749,6 +770,19 @@ export default function Home() {
               </ol>
             </aside>
             <div className="form-panel">
+              <p className="quiet-note" role="status">{draftStatus}</p>
+              <p className="quiet-note">여행 조건과 예약 메모는 이 기기에 보관됩니다. 공용 기기에서는 사용 후 입력 초안을 지워 주세요. API 키는 보관하지 않습니다.</p>
+              <button className="text-button" type="button" onClick={() => {
+                if (!window.confirm("입력 중인 여행 조건을 지울까요? 보관한 여행책과 진행 중인 생성 결과는 유지됩니다.")) return;
+                try {
+                  localStorage.removeItem(draftKey);
+                  setBrief({ ...blank, interests: [] });
+                  setStep(0);
+                  setOutline(null);
+                } catch {
+                  setDraftStatus("저장된 초안을 지우지 못했습니다. 브라우저 저장소 설정을 확인해 주세요.");
+                }
+              }}>입력 초안 지우기</button>
               <p className="form-step">{step + 1} / 3</p>
               <h2>
                 {
