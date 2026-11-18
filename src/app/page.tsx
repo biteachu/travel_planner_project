@@ -134,6 +134,13 @@ export default function Home() {
       if (pending.success) {
         setCheckpoint(pending.data);
         setOutline(pending.data.outline);
+        if (pending.data.phase === "complete" && pending.data.trip) {
+          setTrip(pending.data.trip);
+          setView("work");
+          setNotice(
+            "보관을 마치지 못한 가이드북을 복구했습니다. 내용을 확인하고 보관하거나 파일로 내려받아 주세요.",
+          );
+        }
       }
       const rawBooks = localStorage.getItem("travel-books-v1") || "[]";
       const data = JSON.parse(rawBooks);
@@ -194,27 +201,33 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function save(t = trip) {
-    if (!t) return;
+    if (!t) return false;
     if (recoveryBlocked.current) {
       setError(
         "기존 원본 보호를 위해 보관을 중단했습니다. 내 여행책에서 복구용 JSON을 내려받고 브라우저 저장 공간을 확보해 주세요.",
       );
-      return;
+      return false;
     }
     const validated = tripSchema.safeParse(t);
     if (!validated.success) {
       setError(
         "저장하지 못했습니다. 비어 있는 제목·시간과 활동 수·비용 입력을 확인해 주세요. 이전 보관본은 유지됩니다.",
       );
-      return;
+      return false;
     }
     const next = [validated.data, ...library.filter((x) => x.id !== t.id)];
     try {
       localStorage.setItem("travel-books-v1", JSON.stringify(next));
       setLibrary(next);
+      if (checkpoint?.phase === "complete" && checkpoint.trip?.id === t.id) {
+        localStorage.removeItem("travel-pending-v1");
+        setCheckpoint(null);
+      }
       setNotice("이 브라우저에 여행을 보관했습니다.");
+      return true;
     } catch {
       setError("브라우저 저장 공간이 부족합니다. JSON 파일로 내보내 주세요.");
+      return false;
     }
   }
   function setTrip(next: Trip | null) {
@@ -316,13 +329,19 @@ export default function Home() {
       }
       const t = tripSchema.parse(state.trip);
       setTrip(t);
-      save(t);
-      localStorage.removeItem("travel-pending-v1");
-      setCheckpoint(null);
+      const saved = save(t);
+      if (saved) {
+        localStorage.removeItem("travel-pending-v1");
+        setCheckpoint(null);
+      }
       setDay(0);
       setTab("guide");
       navigate("work");
-      setNotice("가이드북을 만들었습니다. 확인 필요 항목을 먼저 살펴보세요.");
+      setNotice(
+        saved
+          ? "가이드북을 만들었습니다. 확인 필요 항목을 먼저 살펴보세요."
+          : "가이드북은 완성됐지만 보관하지 못했습니다. 복구용 진행 데이터는 유지했습니다. 파일로 내려받거나 저장 공간을 확보한 뒤 보관해 주세요.",
+      );
     } catch (e) {
       setError(
         stopped.current

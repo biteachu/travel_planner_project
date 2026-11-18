@@ -1,6 +1,81 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
 import { examples } from "../src/lib/examples";
+test("생성 완료 후 보관 실패 시 새로고침으로 복구하고 다시 보관한다", async ({
+  page,
+}) => {
+  const trip = {
+    ...structuredClone(examples[0]),
+    title: "보관 실패 복구 여행",
+    isExample: false,
+  };
+  const pending = {
+    brief: trip.brief,
+    outline: {
+      title: trip.title,
+      summary: trip.summary,
+      bases: trip.bases,
+      questions: [],
+    },
+    research: { text: "", sources: [], method: "test" },
+    days: trip.days,
+    trip,
+    phase: "review",
+    id: trip.id,
+  };
+  await page.addInitScript((value) => {
+    if (!sessionStorage.getItem("seeded")) {
+      localStorage.setItem("travel-pending-v1", JSON.stringify(value));
+      sessionStorage.setItem("seeded", "yes");
+    }
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (
+        key === "travel-books-v1" &&
+        sessionStorage.getItem("allowSave") !== "yes"
+      )
+        throw new DOMException("quota", "QuotaExceededError");
+      return original.call(this, key, value);
+    };
+  }, pending);
+  await page.route("**/api/agent", async (route) => {
+    const { payload } = route.request().postDataJSON();
+    await route.fulfill({
+      json: { result: payload.trip, repairDates: [], reviewWarnings: [] },
+    });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "API 키 설정", exact: true }).click();
+  await page
+    .getByLabel("API 키", { exact: true })
+    .fill("test-only-save-failure");
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
+  await page
+    .getByRole("button", { name: "이어서 만들기", exact: true })
+    .click();
+  await expect(
+    page.getByText(/가이드북은 완성됐지만 보관하지 못했습니다/),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("travel-pending-v1")!).phase,
+    ),
+  ).toBe("complete");
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: trip.title, exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() => sessionStorage.setItem("allowSave", "yes"));
+  await page.getByRole("button", { name: "보관", exact: true }).click();
+  expect(
+    await page.evaluate(() => localStorage.getItem("travel-pending-v1")),
+  ).toBeNull();
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("travel-books-v1")!)[0].title,
+    ),
+  ).toBe(trip.title);
+});
 test("잘못된 편집 저장을 거절하고 마지막 정상 보관본을 유지한다", async ({
   page,
 }) => {
