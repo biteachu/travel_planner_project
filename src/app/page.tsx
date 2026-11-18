@@ -144,7 +144,7 @@ export default function Home() {
     setDraftReady(true);
   }, []);
   useEffect(() => {
-    if (!draftReady || view !== "create") return;
+    if (!draftReady || (view !== "create" && view !== "outline")) return;
     try {
       localStorage.setItem(draftKey, encodeDraft({ brief, step }));
       setDraftStatus("입력 내용을 이 브라우저에 자동 보관했습니다.");
@@ -967,8 +967,8 @@ export default function Home() {
                 <textarea
                   aria-label="추가 답변"
                   placeholder="답변을 적으면 계획에 반영합니다."
-                  value={brief.preferences}
-                  onChange={(e) => field("preferences", e.target.value)}
+                  value={brief.additionalAnswers || ""}
+                  onChange={(e) => field("additionalAnswers", e.target.value)}
                 />
               </div>
             )}

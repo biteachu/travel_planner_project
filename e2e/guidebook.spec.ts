@@ -1,5 +1,61 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
+test("추가 답변이 기존 취향을 보존한 채 생성 요청에 전달된다", async ({
+  page,
+}) => {
+  let researchBrief:
+    { preferences: string; additionalAnswers: string } | undefined;
+  await page.route("**/api/agent", async (route) => {
+    const body = route.request().postDataJSON();
+    if (body.stage === "outline")
+      return route.fulfill({
+        json: {
+          result: {
+            title: "여행",
+            summary: "요약",
+            bases: [
+              {
+                city: "히로시마",
+                nights: 2,
+                reason: "거점",
+                neighborhood: "중심부",
+              },
+            ],
+            questions: ["선호하는 시작 시간은?"],
+          },
+        },
+      });
+    researchBrief = body.payload.brief;
+    await route.fulfill({ status: 502, json: { error: "검증용 중단" } });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "API 키 설정", exact: true }).click();
+  await page
+    .getByLabel("API 키", { exact: true })
+    .fill("test-only-local-mock-key");
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
+  await page.getByRole("button", { name: "내 여행책 만들기" }).click();
+  await page.getByLabel("어느 나라로 떠나시나요?").fill("일본");
+  await page.getByLabel("여행 시작일").fill("2027-01-10");
+  await page.getByLabel("여행 종료일").fill("2027-01-12");
+  await page.getByRole("button", { name: "다음 단계" }).click();
+  await page
+    .getByLabel("나만의 취향", { exact: true })
+    .fill("조용한 골목과 작은 카페");
+  await page.getByRole("button", { name: "다음 단계" }).click();
+  await page.getByRole("button", { name: "여행 골격 제안받기" }).click();
+  await page.getByLabel("추가 답변").fill("오전 10시 이후 시작");
+  await page
+    .getByRole("button", { name: "이 구성으로 가이드북 만들기" })
+    .click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "검증용 중단" }),
+  ).toBeVisible();
+  expect(researchBrief).toMatchObject({
+    preferences: "조용한 골목과 작은 카페",
+    additionalAnswers: "오전 10시 이후 시작",
+  });
+});
 test("확정 예약을 추가·복원하고 시간 충돌을 거절한다", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "내 여행책 만들기" }).click();

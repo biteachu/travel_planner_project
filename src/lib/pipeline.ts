@@ -4,7 +4,6 @@ import {
   outlineSchema,
   daySchema,
   tripSchema,
-  sourceSchema,
   datesBetween,
   validateTrip,
   dayConstraintIssues,
@@ -13,11 +12,7 @@ import {
   type Trip,
 } from "./trip";
 
-export const researchSchema = z.object({
-  text: z.string().max(100000),
-  sources: z.array(sourceSchema).max(300),
-  method: z.string().max(100),
-});
+import { researchSchema, hasUnknownSources } from "./research";
 export const checkpointSchema = z.object({
   brief: briefSchema,
   outline: outlineSchema,
@@ -75,6 +70,10 @@ export async function advancePipeline(
       const fixedIssues = dayConstraintIssues(state.brief, day);
       if (fixedIssues.length)
         throw new Error(fixedIssues.join(" ") + " 다시 시도해 주세요.");
+      if (hasUnknownSources(day.activities, state.research?.sources || []))
+        throw new Error(
+          "조사 자료에 없는 출처를 참조한 일정입니다. 다시 시도해 주세요.",
+        );
       state.days.push(day);
     }
     if (state.days.length === dates.length) {
@@ -104,8 +103,16 @@ export async function advancePipeline(
     state.phase === "curate" ||
     state.phase === "review"
   ) {
-    const response = await call(state.phase, { trip: state.trip });
-    state.trip = z.object({ result: tripSchema }).parse(response).result;
+    const response = await call(state.phase, {
+      trip: state.trip,
+      research: state.research,
+    });
+    const next = z.object({ result: tripSchema }).parse(response).result;
+    if (hasUnknownSources(next.stories, state.research?.sources || []))
+      throw new Error(
+        "조사 자료에 없는 출처를 참조한 설명입니다. 다시 시도해 주세요.",
+      );
+    state.trip = next;
     state.phase =
       state.phase === "budget"
         ? "curate"

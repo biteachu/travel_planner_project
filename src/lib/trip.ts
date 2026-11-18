@@ -34,6 +34,7 @@ export const briefSchema = z
     pace: z.enum(["여유롭게", "균형 있게", "알차게"]),
     interests: z.array(z.string().max(100)).max(20),
     preferences: text,
+    additionalAnswers: text.optional(),
     avoid: text,
     arrival: text,
     departure: text,

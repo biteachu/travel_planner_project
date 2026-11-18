@@ -1,6 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 import {
+  researchSchema,
+  groundingSupports,
+  hasUnknownSources,
+} from "./research";
+import {
   briefSchema,
   outlineSchema,
   tripSchema,
@@ -24,21 +29,6 @@ export const stageSchema = z.enum([
   "review",
   "revise",
 ]);
-const researchSchema = z.object({
-  text: z.string().max(100000),
-  sources: z
-    .array(
-      z.object({
-        id: z.string(),
-        title: z.string(),
-        url: z.string(),
-        provider: z.enum(["Google Maps", "웹", "사용자", "예시"]),
-        checkedAt: z.string(),
-      }),
-    )
-    .max(300),
-  method: z.string(),
-});
 export async function runAgent(
   key: string,
   stage: z.infer<typeof stageSchema>,
@@ -133,7 +123,15 @@ export async function runAgent(
           ]
         : [];
     });
-    return { text: (r.text || "").slice(0, 100000), sources, method };
+    return {
+      text: (r.text || "").slice(0, 100000),
+      sources,
+      method,
+      supports: groundingSupports(
+        r.candidates?.[0]?.groundingMetadata,
+        sources.map((source) => source.id),
+      ),
+    };
   }
   if (stage === "itinerary") {
     const input = z
@@ -163,6 +161,13 @@ export async function runAgent(
     };
     if (t.days.some((day) => dayConstraintIssues(input.brief, day).length))
       throw new Error("CONSTRAINT_VIOLATION");
+    if (
+      hasUnknownSources(
+        [...t.days.flatMap((day) => day.activities), ...t.stories],
+        t.sources,
+      )
+    )
+      throw new Error("EVIDENCE_REFERENCE_INVALID");
     t.warnings = [
       ...new Set([
         ...t.warnings,
@@ -203,6 +208,8 @@ export async function runAgent(
     if (result.date !== input.date) throw new Error("INVALID_DATE");
     if (dayConstraintIssues(input.brief, result).length)
       throw new Error("CONSTRAINT_VIOLATION");
+    if (hasUnknownSources(result.activities, input.research.sources))
+      throw new Error("EVIDENCE_REFERENCE_INVALID");
     return { result };
   }
   const input = z
@@ -210,13 +217,14 @@ export async function runAgent(
       trip: tripSchema,
       date: z.string().optional(),
       instruction: z.string().max(3000).optional(),
+      research: researchSchema.nullable().optional(),
     })
     .parse(payload);
   const prior = input.trip;
   if (stage === "budget") {
     const result = await json(
       "예산 역할: inspect total-party lodging, meals, activities and local transport against budget. Null means unknown, never zero. Identify missing overnight lodging costs and currency inconsistencies. Suggest realistic reduction options without inventing prices. Do not change any activities or confirmed reservations.",
-      { trip: prior },
+      { trip: prior, research: input.research },
       z.object({
         warnings: z.array(z.string().max(1000)).max(20),
         tips: z.array(z.string().max(1000)).max(10),
@@ -233,7 +241,7 @@ export async function runAgent(
   if (stage === "review") {
     const reviewed = await json(
       "검토 역할: independently check schedule feasibility, missing user preferences, confirmed reservation conflicts, evidence coverage, costs and unrealistic transit. Return only actionable Korean warnings. Do not claim to have checked external sources that were not provided.",
-      { trip: prior },
+      { trip: prior, research: input.research },
       z.object({ warnings: z.array(z.string().max(1000)).max(30) }),
     );
     return {
@@ -253,13 +261,15 @@ export async function runAgent(
   if (stage === "curate") {
     const content = await json(
       "가이드북 큐레이터·예산 역할: write Korean stories and practical tips from provided evidence only. Review category costs and note missing accommodation and unknown prices in warnings. Do not invent history, safety numbers or visa rules. Stories without verified historical evidence should be preference-based suggestions, clearly framed as suggestions.",
-      { trip: prior },
+      { trip: prior, research: input.research },
       z.object({
         stories: tripSchema.shape.stories,
         tips: tripSchema.shape.tips,
         warnings: tripSchema.shape.warnings,
       }),
     );
+    if (hasUnknownSources(content.stories, prior.sources))
+      throw new Error("EVIDENCE_REFERENCE_INVALID");
     return {
       result: {
         ...prior,
@@ -293,6 +303,13 @@ export async function runAgent(
       status: "확인 필요",
     };
     const issues = validateTrip(next, prior);
+    if (
+      hasUnknownSources(
+        next.days.flatMap((day) => day.activities),
+        prior.sources,
+      )
+    )
+      throw new Error("EVIDENCE_REFERENCE_INVALID");
     if (next.days.some((day) => dayConstraintIssues(prior.brief, day).length))
       throw new Error("CONSTRAINT_VIOLATION");
     if (issues.some((x) => x.includes("고정")))
