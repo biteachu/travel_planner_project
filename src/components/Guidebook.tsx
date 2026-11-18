@@ -33,7 +33,7 @@ export function Guidebook({
               rel="noreferrer"
             >
               {s.title}{" "}
-              <span translate="no">
+              <span translate="no" style={{ whiteSpace: "nowrap" }}>
                 {s.provider === "Google Maps" ? "Google Maps" : ""}
               </span>
             </a>
@@ -385,7 +385,10 @@ export function Guidebook({
               ) : (
                 s.title
               )}{" "}
-              <span translate="no">{s.provider}</span> / 확인: {s.checkedAt}
+              <span translate="no" style={{ whiteSpace: "nowrap" }}>
+                {s.provider}
+              </span>{" "}
+              / 확인: {s.checkedAt}
             </p>
           ))
         ) : (
