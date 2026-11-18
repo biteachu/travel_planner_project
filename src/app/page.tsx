@@ -202,16 +202,26 @@ export default function Home() {
     }
     const ctrl = new AbortController();
     controller.current = ctrl;
-    const response = await fetch("/api/agent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: key.trim(), stage, payload }),
-      signal: ctrl.signal,
-    });
-    const data = await response.json();
-    if (!response.ok)
-      throw new Error(data.error || "요청을 처리하지 못했습니다.");
-    return data;
+    try {
+      const response = await fetch("/api/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: key.trim(), stage, payload }),
+        signal: ctrl.signal,
+      });
+      const data = await response.json();
+      // A completed response must not be applied after the user cancels it.
+      ctrl.signal.throwIfAborted();
+      if (!response.ok)
+        throw new Error(data.error || "요청을 처리하지 못했습니다.");
+      return data;
+    } catch (error) {
+      if (ctrl.signal.aborted)
+        throw new Error("요청을 중단했습니다. 완료된 결과는 유지됩니다.");
+      throw error;
+    } finally {
+      if (controller.current === ctrl) controller.current = null;
+    }
   }
   async function generateOutline() {
     const result = briefSchema.safeParse(brief);
@@ -237,11 +247,11 @@ export default function Home() {
     setError("");
     setEvents([]);
     stopped.current = false;
-    let state =
-      resume && checkpoint ? checkpoint : createCheckpoint(brief, outline);
-    setCheckpoint(state);
-    setBusy(pipelineLabel(state));
     try {
+      let state =
+        resume && checkpoint ? checkpoint : createCheckpoint(brief, outline);
+      setCheckpoint(state);
+      setBusy(pipelineLabel(state));
       localStorage.setItem("travel-pending-v1", JSON.stringify(state));
       while (state.phase !== "complete") {
         if (stopped.current)

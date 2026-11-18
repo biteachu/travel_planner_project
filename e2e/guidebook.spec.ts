@@ -1,6 +1,87 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
 import { examples } from "../src/lib/examples";
+test("생성 중단은 완료 날짜를 보존하고 재개 시 남은 날짜만 요청한다", async ({
+  page,
+}) => {
+  const trip = structuredClone(examples[0]);
+  const pending = {
+    brief: trip.brief,
+    outline: {
+      title: trip.title,
+      summary: trip.summary,
+      bases: trip.bases,
+      questions: [],
+    },
+    research: { text: "", sources: [], method: "test" },
+    days: trip.days.slice(0, -1),
+    trip: null,
+    phase: "days",
+    id: "cancellation-test",
+  };
+  await page.addInitScript(
+    (value) => localStorage.setItem("travel-pending-v1", JSON.stringify(value)),
+    pending,
+  );
+  const requestedDates: string[] = [];
+  let release!: () => void;
+  const delayed = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let arrived!: () => void;
+  const requestArrived = new Promise<void>((resolve) => {
+    arrived = resolve;
+  });
+  await page.route("**/api/agent", async (route) => {
+    const { stage, payload } = route.request().postDataJSON();
+    if (stage === "day") {
+      requestedDates.push(payload.date);
+      if (requestedDates.length === 1) {
+        arrived();
+        await delayed;
+      }
+      await route.fulfill({ json: { result: trip.days.at(-1) } });
+    } else
+      await route.fulfill({
+        json: { result: payload.trip, repairDates: [], reviewWarnings: [] },
+      });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "API 키 설정", exact: true }).click();
+  await page.getByLabel("API 키", { exact: true }).fill("test-only-cancel-key");
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
+  await page
+    .getByRole("button", { name: "이어서 만들기", exact: true })
+    .click();
+  await requestArrived;
+  await page.getByRole("button", { name: "중단", exact: true }).click();
+  release();
+  await expect(
+    page.getByRole("button", { name: "이어서 만들기", exact: true }),
+  ).toBeVisible();
+  const stored = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("travel-pending-v1")!),
+  );
+  expect(stored.days).toEqual(pending.days);
+  expect(stored.phase).toBe("days");
+  expect(JSON.stringify(stored)).not.toContain("test-only-cancel-key");
+  await page
+    .getByRole("button", { name: "이어서 만들기", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "중단", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: trip.title, exact: true }),
+  ).toBeVisible();
+  expect(requestedDates).toEqual([
+    trip.days.at(-1)!.date,
+    trip.days.at(-1)!.date,
+  ]);
+  expect(
+    await page.evaluate(() => localStorage.getItem("travel-pending-v1")),
+  ).toBeNull();
+});
 test("예시 재생은 API 없이 단계 이동·일시 정지 후 가이드북으로 이어진다", async ({
   page,
 }) => {
