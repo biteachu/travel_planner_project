@@ -632,6 +632,11 @@ export default function Home() {
           value={brief.reservations}
           onChange={(e) => field("reservations", e.target.value)}
         />
+        <small>
+          메모는 AI가 참고하는 설명입니다. 반드시 지켜야 하는 예약은 아래 확정
+          일정에 날짜·시간을 등록해 주세요. 도착·출발 시각은 활동 가능 시간에도
+          반영해 주세요.
+        </small>
       </label>
       <label>
         첫날 활동 시작 가능 시간
