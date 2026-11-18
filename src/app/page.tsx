@@ -145,11 +145,22 @@ export default function Home() {
           );
         }
       }
-      const rawBooks = localStorage.getItem("travel-books-v1") || "[]";
-      const data = JSON.parse(rawBooks);
+    } catch {
+      setNotice(
+        "생성 진행 기록을 읽지 못했습니다. 보관된 여행은 별도로 확인합니다.",
+      );
+    }
+    try {
+      const rawBooks = localStorage.getItem("travel-books-v1") ?? "[]";
+      let data: unknown;
+      try {
+        data = JSON.parse(rawBooks);
+      } catch {
+        // Keep the exact text for recovery, including truncated or empty JSON.
+      }
       setRecoveryBackup(localStorage.getItem("travel-books-recovery-v1"));
       if (
-        Array.isArray(data) &&
+        !Array.isArray(data) ||
         data.some((item) => !tripSchema.safeParse(item).success)
       ) {
         setRecoveryBackup(rawBooks);
@@ -174,8 +185,9 @@ export default function Home() {
           : [],
       );
     } catch {
+      recoveryBlocked.current = true;
       setNotice(
-        "저장된 여행을 읽지 못했습니다. JSON 백업 파일을 가져올 수 있습니다.",
+        "보관함을 읽지 못해 기존 원본 보호를 위해 저장·삭제를 중단했습니다. 브라우저 저장소 설정을 확인한 뒤 새로고침해 주세요.",
       );
     }
     setDraftReady(true);
@@ -1494,7 +1506,7 @@ export default function Home() {
         )}
         {view === "library" && (
           <section className="content-wrap">
-            {recoveryBackup && (
+            {recoveryBackup !== null && (
               <div role="status">
                 <p>
                   형식이 맞지 않는 저장본의 원본을 보존했습니다. 복구용 파일은

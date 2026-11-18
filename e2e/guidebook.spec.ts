@@ -102,6 +102,52 @@ test("잘못된 편집 저장을 거절하고 마지막 정상 보관본을 유�
     page.getByRole("button", { name: /바다 곁에서, 히로시마.*버전/ }),
   ).toBeVisible();
 });
+for (const [label, raw] of [
+  ["잘린 JSON", '{"trips":'],
+  ["객체", '{"unknown":true}'],
+  ["빈 문자열", ""],
+  ["null", "null"],
+]) {
+  test(`보관함 전체 손상: ${label}도 정확한 복구 파일로 내려받는다`, async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      (value) => localStorage.setItem("travel-books-v1", value),
+      raw,
+    );
+    await page.goto("/");
+    await page.getByRole("button", { name: "내 여행책", exact: true }).click();
+    const downloaded = page.waitForEvent("download");
+    await page.getByRole("button", { name: "복구용 JSON 다운로드" }).click();
+    const download = await downloaded;
+    expect(await fs.readFile((await download.path())!, "utf8")).toBe(raw);
+    expect(
+      await page.evaluate(() =>
+        localStorage.getItem("travel-books-recovery-v1"),
+      ),
+    ).toBe(raw);
+    expect(
+      await page.evaluate(() => localStorage.getItem("travel-books-v1")),
+    ).toBe(raw);
+  });
+}
+
+test("손상된 생성 진행 기록이 정상 보관함 읽기를 막지 않는다", async ({
+  page,
+}) => {
+  await page.addInitScript((trip) => {
+    localStorage.setItem("travel-pending-v1", "{");
+    localStorage.setItem("travel-books-v1", JSON.stringify([trip]));
+  }, examples[0]);
+  await page.goto("/");
+  await page.getByRole("button", { name: "내 여행책", exact: true }).click();
+  await expect(
+    page
+      .getByRole("button")
+      .filter({ has: page.getByText(examples[0].title, { exact: true }) }),
+  ).toBeVisible();
+});
+
 test("형식이 잘못된 보관본도 복구용 원본을 남긴다", async ({ page }) => {
   const invalid = structuredClone(examples[0]);
   invalid.days[0].activities[0].title = "";
