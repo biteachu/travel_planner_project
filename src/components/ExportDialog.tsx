@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { Trip } from "../lib/trip";
-import { downloadFile, exportGuidebook } from "../lib/export";
+import { downloadFile, createGuidebookExport } from "../lib/export";
 import {
   defaultExportOptions,
   type ExportOptions,
@@ -30,7 +30,7 @@ export function ExportDialog({
   const [reviewed, setReviewed] = useState(false);
   const output = useMemo(() => {
     try {
-      return { html: exportGuidebook(trip, options), error: "" };
+      return { ...createGuidebookExport(trip, options), error: "" };
     } catch {
       return {
         html: "",

@@ -714,12 +714,25 @@ test("키 없이 예시를 편집·보관·다운로드하고 오프라인 열�
   await page
     .getByLabel("미리보기에서 개인 메모와 예약번호의 포함 여부를 확인했습니다.")
     .check();
+  const preview = await page
+    .locator('iframe[title="다운로드할 가이드북 미리보기"]')
+    .getAttribute("srcdoc");
+  const exportRecord = JSON.parse(
+    (await page
+      .frameLocator('iframe[title="다운로드할 가이드북 미리보기"]')
+      .locator('meta[name="travel-guidebook-export"]')
+      .getAttribute("content"))!,
+  );
+  expect(exportRecord.options.budget).toBe(false);
+  expect(exportRecord.tripId).toBe(examples[0].id);
+  expect(exportRecord.tripVersion).toBeGreaterThan(examples[0].version);
   const downloaded = page.waitForEvent("download");
   await page.getByRole("button", { name: "선택한 내용 다운로드" }).click();
   const file = await downloaded;
   const path = await file.path();
   expect(path).toBeTruthy();
   const html = await fs.readFile(path!, "utf8");
+  expect(html).toBe(preview);
   expect(html).toContain("나만의 산책");
   expect(html).not.toContain("<script");
   expect(html).not.toContain('id="budget"');

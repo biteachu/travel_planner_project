@@ -1,7 +1,30 @@
 import { it, expect } from "vitest";
-import { exportGuidebook } from "../src/lib/export";
+import {
+  exportGuidebook,
+  createGuidebookExport,
+  guidebookTemplateVersion,
+} from "../src/lib/export";
 import { examples } from "../src/lib/examples";
 import { defaultExportOptions } from "../src/lib/export-options";
+it("출력 스냅샷은 여행 버전·시각·선택 항목을 보존하고 입력 원문을 포함하지 않는다", () => {
+  const trip = structuredClone(examples[0]);
+  trip.brief.reservations = "PRIVATE_RESERVATION_RAW";
+  const options = { ...defaultExportOptions, budget: false };
+  const record = createGuidebookExport(trip, options);
+  expect(record.tripId).toBe(trip.id);
+  expect(record.tripVersion).toBe(trip.version);
+  expect(record.templateVersion).toBe(guidebookTemplateVersion);
+  expect(Number.isNaN(Date.parse(record.createdAt))).toBe(false);
+  expect(record.html).toContain('name="travel-guidebook-export"');
+  expect(record.html).toContain(record.id);
+  expect(record.html).not.toContain("PRIVATE_RESERVATION_RAW");
+  const snapshot = record.html;
+  options.budget = true;
+  trip.title = "나중에 편집한 제목";
+  expect(record.options.budget).toBe(false);
+  expect(record.html).toBe(snapshot);
+  expect(record.html).not.toContain(trip.title);
+});
 it("선택한 내용만 제외하고 원본은 변경하지 않는다", () => {
   const trip = structuredClone(examples[0]);
   trip.summary = "PRIVATE_PROFILE";
