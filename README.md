@@ -25,6 +25,10 @@ npm run dev
 
 계정 저장 미설정 시에도 브라우저 보관과 가이드북 다운로드를 사용할 수 있습니다. AI 비용과 별도로 배포·DB 사용량 비용이 발생할 수 있습니다.
 
+변경된 계정 저장본은 DB 트리거가 `trip_revisions`에 함께 기록합니다. 일반 사용자는 본인의 버전만 읽을 수 있으며 버전을 직접 수정할 수 없습니다. 과거 버전 복원 화면은 후속 기능입니다. `계정에서도 삭제`는 로그인한 계정의 여행·모든 버전과 현재 브라우저의 보관본을 제거합니다. 다른 기기의 로컬 사본이나 다운로드 파일은 별도로 남습니다. SQL은 재적용 가능하며, 기존 여행은 현재 저장본부터 기록합니다. 트리거 설계는 [PostgreSQL 공식 문서](https://www.postgresql.org/docs/current/plpgsql-trigger.html), 함수 권한 설정은 [Supabase 공식 문서](https://supabase.com/docs/guides/database/functions)를 참고했습니다.
+
+로컬 PGlite 테스트는 같은 SQL로 사용자별 접근·버전 생성·삭제를 검증합니다. Supabase의 실제 인증·메일·네트워크 설정을 대체하는 검증은 아닙니다.
+
 ## 검증
 
 ```sh

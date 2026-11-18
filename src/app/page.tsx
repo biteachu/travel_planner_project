@@ -300,7 +300,10 @@ export default function Home() {
       setBusy("");
     }
   }
-  async function account(action: "login" | "save" | "load" | "logout") {
+  async function account(
+    action: "login" | "save" | "load" | "logout" | "delete",
+    target?: Trip,
+  ) {
     try {
       const { getSupabase } = await import("../lib/supabase");
       const client = getSupabase();
@@ -309,7 +312,8 @@ export default function Home() {
           "계정 저장 서비스가 아직 연결되지 않았습니다. 브라우저 보관과 HTML 다운로드를 이용해 주세요.",
         );
       if (action === "logout") {
-        await client.auth.signOut();
+        const { error } = await client.auth.signOut();
+        if (error) throw error;
         setNotice(
           "로그아웃했습니다. 이 브라우저의 여행 파일은 별도로 보관됩니다.",
         );
@@ -330,18 +334,42 @@ export default function Home() {
         } = await client.auth.getUser();
         if (!user) throw new Error("이메일 링크로 먼저 로그인해 주세요.");
         if (action === "save" && trip) {
+          const validated = tripSchema.parse(trip);
           const { error } = await client.from("trips").upsert(
             {
               id: trip.id,
               owner_id: user.id,
               title: trip.title,
-              data: trip,
+              data: validated,
               updated_at: new Date().toISOString(),
             },
             { onConflict: "owner_id,id" },
           );
           if (error) throw error;
-          setNotice("계정에 여행을 저장했습니다.");
+          setNotice(
+            "계정에 여행을 저장했습니다. 변경된 저장본은 버전 기록으로 보존됩니다.",
+          );
+        }
+        if (action === "delete" && target) {
+          const { error } = await client
+            .from("trips")
+            .delete()
+            .eq("owner_id", user.id)
+            .eq("id", target.id);
+          if (error) throw error;
+          const next = library.filter((item) => item.id !== target.id);
+          setLibrary(next);
+          if (trip?.id === target.id) setTrip(null);
+          try {
+            localStorage.setItem("travel-books-v1", JSON.stringify(next));
+          } catch {
+            throw new Error(
+              "계정 삭제는 완료했지만 브라우저 보관본을 지우지 못했습니다. 브라우저 저장소 설정을 확인해 주세요.",
+            );
+          }
+          setNotice(
+            "계정의 여행·버전 기록과 이 브라우저의 보관본을 삭제했습니다. 다른 기기에 따로 보관한 파일은 남아 있을 수 있습니다.",
+          );
         }
         if (action === "load") {
           const { data, error } = await client
@@ -1415,6 +1443,19 @@ export default function Home() {
                       }
                     >
                       복제
+                    </button>
+                    <button
+                      aria-label={`${t.title} 계정에서도 삭제`}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            "로그인한 계정의 이 여행과 모든 저장 버전, 이 브라우저의 보관본을 삭제할까요? 되돌릴 수 없습니다.",
+                          )
+                        )
+                          void account("delete", t);
+                      }}
+                    >
+                      계정에서도 삭제
                     </button>
                   </div>
                 ))}
