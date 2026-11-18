@@ -2,18 +2,33 @@ import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
 test("체류 시간과 순서를 바꾸고 고정 일정은 보호한다", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /한 도시에서, 조금 더 깊이 Hiroshima/ }).click();
+  await page
+    .getByRole("button", { name: /한 도시에서, 조금 더 깊이 Hiroshima/ })
+    .click();
   await page.getByRole("button", { name: "일정 다듬기", exact: true }).click();
-  const firstTitle = await page.getByLabel("활동 1 이름", { exact: true }).inputValue();
+  const firstTitle = await page
+    .getByLabel("활동 1 이름", { exact: true })
+    .inputValue();
   await page.getByLabel("활동 1 체류 시간", { exact: true }).fill("600");
   await expect(page.getByText(/시간이 겹칩니다/).first()).toBeVisible();
   await page.getByLabel("활동 1 뒤로", { exact: true }).click();
-  await expect(page.getByLabel("활동 2 이름", { exact: true })).toHaveValue(firstTitle);
-  await expect(page.getByLabel("활동 2 체류 시간", { exact: true })).toHaveValue("600");
-  await page.getByRole("button", { name: "일정 고정", exact: true }).nth(1).click();
-  await expect(page.getByLabel("활동 2 체류 시간", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("활동 2 이름", { exact: true })).toHaveValue(
+    firstTitle,
+  );
+  await expect(
+    page.getByLabel("활동 2 체류 시간", { exact: true }),
+  ).toHaveValue("600");
+  await page
+    .getByRole("button", { name: "일정 고정", exact: true })
+    .nth(1)
+    .click();
+  await expect(
+    page.getByLabel("활동 2 체류 시간", { exact: true }),
+  ).toBeDisabled();
   await expect(page.getByLabel("활동 1 뒤로", { exact: true })).toBeDisabled();
-  await expect(page.getByLabel("활동 2 앞으로", { exact: true })).toBeDisabled();
+  await expect(
+    page.getByLabel("활동 2 앞으로", { exact: true }),
+  ).toBeDisabled();
 });
 test("미완성 여행 조건을 새로고침 후 복원하고 지운다", async ({ page }) => {
   await page.goto("/");
@@ -22,9 +37,13 @@ test("미완성 여행 조건을 새로고침 후 복원하고 지운다", async
   await page.getByRole("button", { name: "다음 단계" }).click();
   await page.reload();
   await page.getByRole("button", { name: "내 여행책 만들기" }).click();
-  await expect(page.getByRole("button", { name: "2 나만의 취향" })).toHaveAttribute("aria-current", "step");
+  await expect(
+    page.getByRole("button", { name: "2 나만의 취향" }),
+  ).toHaveAttribute("aria-current", "step");
   await page.getByRole("button", { name: "1 여행의 시작" }).click();
-  await expect(page.getByLabel("어느 나라로 떠나시나요?")).toHaveValue("포르투갈");
+  await expect(page.getByLabel("어느 나라로 떠나시나요?")).toHaveValue(
+    "포르투갈",
+  );
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "입력 초안 지우기" }).click();
   await page.reload();
@@ -58,16 +77,30 @@ test("키 없이 예시를 편집·보관·다운로드하고 오프라인 열�
   await expect(
     page.getByRole("heading", { name: "나만의 산책", exact: true }),
   ).toBeVisible();
-  const downloaded = page.waitForEvent("download");
   await page
     .getByRole("button", { name: "HTML 다운로드", exact: true })
     .click();
+  await expect(
+    page.getByRole("button", { name: "선택한 내용 다운로드" }),
+  ).toBeDisabled();
+  await page.getByLabel("예산표·활동별 비용", { exact: true }).uncheck();
+  await expect(
+    page
+      .frameLocator('iframe[title="다운로드할 가이드북 미리보기"]')
+      .getByRole("heading", { name: "여행 예산", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByLabel("미리보기에서 개인 메모와 예약번호의 포함 여부를 확인했습니다.")
+    .check();
+  const downloaded = page.waitForEvent("download");
+  await page.getByRole("button", { name: "선택한 내용 다운로드" }).click();
   const file = await downloaded;
   const path = await file.path();
   expect(path).toBeTruthy();
   const html = await fs.readFile(path!, "utf8");
   expect(html).toContain("나만의 산책");
   expect(html).not.toContain("<script");
+  expect(html).not.toContain('id="budget"');
   const offline = await context.newPage();
   await context.setOffline(true);
   await offline.setContent(html);
@@ -83,6 +116,26 @@ test("키 없이 예시를 편집·보관·다운로드하고 오프라인 열�
     path: `docs/process/current/guidebook-${testInfo.project.name}.png`,
     fullPage: true,
   });
+  await offline
+    .locator("details")
+    .evaluateAll((nodes) =>
+      nodes.forEach((node) => node.removeAttribute("open")),
+    );
+  await offline.emulateMedia({ media: "print" });
+  await expect(
+    offline.getByRole("heading", { name: "나만의 산책", exact: true }),
+  ).toBeVisible();
+  await expect(
+    offline.getByRole("navigation", { name: "가이드북 목차" }),
+  ).toBeHidden();
+  if (testInfo.project.name === "desktop") {
+    const pdf = await offline.pdf({
+      path: testInfo.outputPath("guidebook-print.pdf"),
+      format: "A4",
+      printBackground: true,
+    });
+    expect(pdf.byteLength).toBeGreaterThan(1000);
+  }
   await context.setOffline(false);
   await page.reload();
   await page.getByRole("button", { name: "내 여행책", exact: true }).click();

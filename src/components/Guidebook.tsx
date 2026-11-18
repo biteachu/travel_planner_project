@@ -6,8 +6,18 @@ import {
   mapUrl,
   safeUrl,
 } from "../lib/trip";
+import {
+  defaultExportOptions,
+  type ExportOptions,
+} from "../lib/export-options";
 
-export function Guidebook({ trip }: { trip: Trip }) {
+export function Guidebook({
+  trip,
+  options = defaultExportOptions,
+}: {
+  trip: Trip;
+  options?: ExportOptions;
+}) {
   const total = costSummary(trip);
   const sources = (ids: string[]) =>
     ids
@@ -38,14 +48,16 @@ export function Guidebook({ trip }: { trip: Trip }) {
         </p>
         <h1>{trip.title}</h1>
         <div className="book-cover-line" />
-        <p>{trip.summary}</p>
+        {options.profile && <p>{trip.summary}</p>}
         <div className="book-meta">
           <span>
             {trip.brief.startDate} — {trip.brief.endDate}
           </span>
-          <span>
-            {trip.brief.people}명 / {trip.brief.interests.join(", ")}
-          </span>
+          {options.profile && (
+            <span>
+              {trip.brief.people}명 / {trip.brief.interests.join(", ")}
+            </span>
+          )}
         </div>
         <span className="status-stamp">
           {trip.isExample ? "체험용 예시" : trip.status}
@@ -58,8 +70,8 @@ export function Guidebook({ trip }: { trip: Trip }) {
             {i + 1}일차
           </a>
         ))}
-        <a href="#stay">머무를 곳</a>
-        <a href="#budget">예산</a>
+        {options.lodging && <a href="#stay">머무를 곳</a>}
+        {options.budget && <a href="#budget">예산</a>}
         <a href="#prepare">준비와 출처</a>
       </nav>
       <section id="overview">
@@ -72,7 +84,7 @@ export function Guidebook({ trip }: { trip: Trip }) {
               <h3>
                 {b.city} <small>{b.nights}박</small>
               </h3>
-              <p>{b.reason}</p>
+              {options.details && <p>{b.reason}</p>}
             </div>
           ))}
         </div>
@@ -113,102 +125,125 @@ export function Guidebook({ trip }: { trip: Trip }) {
                     {a.kind}
                     {a.locked ? " · 고정" : ""}
                   </span>
-                  <h3>{a.title}</h3>
-                  <p>{a.description}</p>
-                  <p className="reason">{a.reason}</p>
-                  {a.transport && (
-                    <p className="transport">이동 · {a.transport}</p>
-                  )}
+                  <h3>
+                    {!options.lodging && a.kind === "숙박"
+                      ? "숙박 정보 생략"
+                      : a.title}
+                  </h3>
+                  {options.details &&
+                    (options.lodging || a.kind !== "숙박") && (
+                      <>
+                        <p>{a.description}</p>
+                        <p className="reason">{a.reason}</p>
+                        {a.transport && (
+                          <p className="transport">이동 · {a.transport}</p>
+                        )}
+                      </>
+                    )}
                   <div className="activity-links">
-                    <a
-                      href={mapUrl(a.title + " " + day.city)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      지도에서 보기 ↗
-                    </a>
-                    <span>
-                      {a.cost === null
-                        ? "비용 확인 필요"
-                        : `${money(a.cost, trip.brief.currency)} (${a.costStatus})`}
-                    </span>
+                    {(options.lodging || a.kind !== "숙박") && (
+                      <a
+                        href={mapUrl(a.title + " " + day.city)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        지도에서 보기 ↗
+                      </a>
+                    )}
+                    {options.budget && (
+                      <span>
+                        {a.cost === null
+                          ? "비용 확인 필요"
+                          : `${money(a.cost, trip.brief.currency)} (${a.costStatus})`}
+                      </span>
+                    )}
                   </div>
                   <div className="sources-inline">{sources(a.sourceIds)}</div>
-                  {a.alternative && (
-                    <details className="alternative">
-                      <summary>다른 선택이 필요할 때</summary>
-                      <p>{a.alternative}</p>
-                    </details>
-                  )}
+                  {options.details &&
+                    (options.lodging || a.kind !== "숙박") &&
+                    a.alternative && (
+                      <details className="alternative">
+                        <summary>다른 선택이 필요할 때</summary>
+                        <p>{a.alternative}</p>
+                      </details>
+                    )}
                 </div>
               </div>
             ))}
           </div>
         </details>
       ))}
-      <section id="stay">
-        <p className="section-kicker">머무는 시간도 여행</p>
-        <h2>숙박 거점 고르기</h2>
-        {trip.bases.map((b, i) => (
-          <div className="stay-row" key={i}>
-            <h3>{b.city}</h3>
-            <p>{b.neighborhood}</p>
-            <a href={mapUrl(b.city + " 숙소")} target="_blank" rel="noreferrer">
-              주변 살펴보기 ↗
-            </a>
+      {options.lodging && (
+        <section id="stay">
+          <p className="section-kicker">머무는 시간도 여행</p>
+          <h2>숙박 거점 고르기</h2>
+          {trip.bases.map((b, i) => (
+            <div className="stay-row" key={i}>
+              <h3>{b.city}</h3>
+              <p>{b.neighborhood}</p>
+              <a
+                href={mapUrl(b.city + " 숙소")}
+                target="_blank"
+                rel="noreferrer"
+              >
+                주변 살펴보기 ↗
+              </a>
+            </div>
+          ))}
+        </section>
+      )}
+      {options.budget && (
+        <section id="budget">
+          <p className="section-kicker">일행 전체 / 항공료 제외</p>
+          <h2>여행 예산</h2>
+          <div className="budget-grid">
+            <div>
+              <small>계획 예산</small>
+              <strong>{money(trip.brief.budget, trip.brief.currency)}</strong>
+            </div>
+            <div>
+              <small>입력·추정·조회 금액 합계</small>
+              <strong>
+                {total.knownCount
+                  ? money(total.known, trip.brief.currency)
+                  : "아직 미확인"}
+              </strong>
+            </div>
+            <div>
+              <small>아직 확인할 비용</small>
+              <strong>{total.unknown}개 항목</strong>
+            </div>
           </div>
-        ))}
-      </section>
-      <section id="budget">
-        <p className="section-kicker">일행 전체 / 항공료 제외</p>
-        <h2>여행 예산</h2>
-        <div className="budget-grid">
-          <div>
-            <small>계획 예산</small>
-            <strong>{money(trip.brief.budget, trip.brief.currency)}</strong>
-          </div>
-          <div>
-            <small>입력·추정·조회 금액 합계</small>
-            <strong>
-              {total.knownCount
-                ? money(total.known, trip.brief.currency)
-                : "아직 미확인"}
-            </strong>
-          </div>
-          <div>
-            <small>아직 확인할 비용</small>
-            <strong>{total.unknown}개 항목</strong>
-          </div>
-        </div>
-        <table className="cost-table">
-          <caption>항목별 경비</caption>
-          <thead>
-            <tr>
-              <th>항목</th>
-              <th>계산 가능한 금액</th>
-              <th>확인 필요</th>
-            </tr>
-          </thead>
-          <tbody>
-            {categoryCosts(trip).map((c) => (
-              <tr key={c.kind}>
-                <th>{c.kind}</th>
-                <td>
-                  {c.known ? money(c.total, trip.brief.currency) : "미확인"}
-                </td>
-                <td>
-                  {c.unknown}개{!c.known && !c.unknown ? " · 미입력" : ""}
-                </td>
+          <table className="cost-table">
+            <caption>항목별 경비</caption>
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>계산 가능한 금액</th>
+                <th>확인 필요</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <p>
-          미확인 비용은 합계에 포함하지 않았습니다. 숙박비가 별도 일정 항목으로
-          입력되지 않았다면 합계에 포함되지 않습니다. 실제 총경비와 다를 수
-          있습니다.
-        </p>
-      </section>
+            </thead>
+            <tbody>
+              {categoryCosts(trip).map((c) => (
+                <tr key={c.kind}>
+                  <th>{c.kind}</th>
+                  <td>
+                    {c.known ? money(c.total, trip.brief.currency) : "미확인"}
+                  </td>
+                  <td>
+                    {c.unknown}개{!c.known && !c.unknown ? " · 미입력" : ""}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p>
+            미확인 비용은 합계에 포함하지 않았습니다. 숙박비가 별도 일정
+            항목으로 입력되지 않았다면 합계에 포함되지 않습니다. 실제 총경비와
+            다를 수 있습니다.
+          </p>
+        </section>
+      )}
       {trip.stories.length > 0 && (
         <section>
           <p className="section-kicker">알고 보면 더 좋은 여행</p>
@@ -245,7 +280,11 @@ export function Guidebook({ trip }: { trip: Trip }) {
             </p>
           ))
         ) : (
-          <p>이 예시는 최신 여행 정보를 조사한 결과가 아닙니다.</p>
+          <p>
+            {trip.isExample
+              ? "이 예시는 최신 여행 정보를 조사한 결과가 아닙니다."
+              : "연결된 출처가 없습니다. 장소와 이동 정보를 출발 전에 확인해 주세요."}
+          </p>
         )}
         <p className="fine-print">
           외부 지도·출처 링크는 인터넷 연결이 필요합니다. 실제 영업·운행·예약

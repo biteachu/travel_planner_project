@@ -39,7 +39,8 @@ import {
   money,
   costSummary,
 } from "../lib/trip";
-import { downloadFile, exportGuidebook } from "../lib/export";
+import { downloadFile } from "../lib/export";
+import { ExportDialog } from "../components/ExportDialog";
 import { guidebookCss } from "../lib/guidebook-style";
 import { draftKey, readDraft, encodeDraft } from "../lib/draft";
 import { moveActivity } from "../lib/editing";
@@ -90,6 +91,7 @@ export default function Home() {
   const [day, setDay] = useState(0);
   const [key, setKey] = useState("");
   const [keyOpen, setKeyOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -112,7 +114,9 @@ export default function Home() {
         setDraftStatus("이 브라우저의 입력 초안을 불러왔습니다.");
       }
     } catch {
-      setDraftStatus("브라우저 저장소를 사용할 수 없습니다. 입력은 현재 화면에만 유지됩니다.");
+      setDraftStatus(
+        "브라우저 저장소를 사용할 수 없습니다. 입력은 현재 화면에만 유지됩니다.",
+      );
     }
     try {
       const pending = checkpointSchema.safeParse(
@@ -144,7 +148,9 @@ export default function Home() {
       localStorage.setItem(draftKey, encodeDraft({ brief, step }));
       setDraftStatus("입력 내용을 이 브라우저에 자동 보관했습니다.");
     } catch {
-      setDraftStatus("입력 초안을 보관하지 못했습니다. 새로고침 전에 내용을 복사해 주세요.");
+      setDraftStatus(
+        "입력 초안을 보관하지 못했습니다. 새로고침 전에 내용을 복사해 주세요.",
+      );
     }
   }, [brief, step, view, draftReady]);
   useEffect(() => {
@@ -772,19 +778,37 @@ export default function Home() {
               </ol>
             </aside>
             <div className="form-panel">
-              <p className="quiet-note" role="status">{draftStatus}</p>
-              <p className="quiet-note">여행 조건과 예약 메모는 이 기기에 보관됩니다. 공용 기기에서는 사용 후 입력 초안을 지워 주세요. API 키는 보관하지 않습니다.</p>
-              <button className="text-button" type="button" onClick={() => {
-                if (!window.confirm("입력 중인 여행 조건을 지울까요? 보관한 여행책과 진행 중인 생성 결과는 유지됩니다.")) return;
-                try {
-                  localStorage.removeItem(draftKey);
-                  setBrief({ ...blank, interests: [] });
-                  setStep(0);
-                  setOutline(null);
-                } catch {
-                  setDraftStatus("저장된 초안을 지우지 못했습니다. 브라우저 저장소 설정을 확인해 주세요.");
-                }
-              }}>입력 초안 지우기</button>
+              <p className="quiet-note" role="status">
+                {draftStatus}
+              </p>
+              <p className="quiet-note">
+                여행 조건과 예약 메모는 이 기기에 보관됩니다. 공용 기기에서는
+                사용 후 입력 초안을 지워 주세요. API 키는 보관하지 않습니다.
+              </p>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      "입력 중인 여행 조건을 지울까요? 보관한 여행책과 진행 중인 생성 결과는 유지됩니다.",
+                    )
+                  )
+                    return;
+                  try {
+                    localStorage.removeItem(draftKey);
+                    setBrief({ ...blank, interests: [] });
+                    setStep(0);
+                    setOutline(null);
+                  } catch {
+                    setDraftStatus(
+                      "저장된 초안을 지우지 못했습니다. 브라우저 저장소 설정을 확인해 주세요.",
+                    );
+                  }
+                }}
+              >
+                입력 초안 지우기
+              </button>
               <p className="form-step">{step + 1} / 3</p>
               <h2>
                 {
@@ -967,14 +991,7 @@ export default function Home() {
                 <button
                   className="primary small"
                   onClick={() => {
-                    downloadFile(
-                      exportGuidebook(trip),
-                      "travel-guidebook.html",
-                      "text/html;charset=utf-8",
-                    );
-                    setNotice(
-                      "HTML 가이드북을 다운로드했습니다. 파일에 여행 일정이 포함됩니다.",
-                    );
+                    setExportOpen(true);
                   }}
                 >
                   <Download size={16} />
@@ -1025,7 +1042,11 @@ export default function Home() {
                     고정 항목은 AI 재생성 시 보존됩니다. 수동 수정 후에는
                     영업시간과 동선을 다시 확인해 주세요.
                   </p>
-                  <p className="quiet-note">앞으로·뒤로 이동하면 이웃 활동과 시작 시간을 교환합니다. 체류 시간과 이동 정보는 유지되므로 아래 자동 검사와 동선을 확인해 주세요.</p>
+                  <p className="quiet-note">
+                    앞으로·뒤로 이동하면 이웃 활동과 시작 시간을 교환합니다.
+                    체류 시간과 이동 정보는 유지되므로 아래 자동 검사와 동선을
+                    확인해 주세요.
+                  </p>
                   {trip.days[day]?.activities.map((a, i) => (
                     <div className="edit-card" key={a.id}>
                       <div className="edit-top">
@@ -1099,7 +1120,12 @@ export default function Home() {
                           disabled={a.locked}
                           onChange={(e) => {
                             const duration = Number(e.target.value);
-                            if (!Number.isInteger(duration) || duration < 0 || duration > 1440) return;
+                            if (
+                              !Number.isInteger(duration) ||
+                              duration < 0 ||
+                              duration > 1440
+                            )
+                              return;
                             const next = structuredClone(trip);
                             next.days[day].activities[i].duration = duration;
                             updateTrip(next);
@@ -1112,13 +1138,21 @@ export default function Home() {
                             key={direction}
                             className="text-button"
                             aria-label={`활동 ${i + 1} ${direction === -1 ? "앞으로" : "뒤로"}`}
-                            disabled={a.locked || !trip.days[day].activities[i + direction] || trip.days[day].activities[i + direction]?.locked}
+                            disabled={
+                              a.locked ||
+                              !trip.days[day].activities[i + direction] ||
+                              trip.days[day].activities[i + direction]?.locked
+                            }
                             onClick={() => {
                               updateTrip(moveActivity(trip, day, i, direction));
                               setCandidate(null);
-                              setNotice("활동 순서와 시작 시간을 교환했습니다. 이동 정보와 시간 겹침을 확인해 주세요.");
+                              setNotice(
+                                "활동 순서와 시작 시간을 교환했습니다. 이동 정보와 시간 겹침을 확인해 주세요.",
+                              );
                             }}
-                          >{direction === -1 ? "앞으로" : "뒤로"}</button>
+                          >
+                            {direction === -1 ? "앞으로" : "뒤로"}
+                          </button>
                         ))}
                       </div>
                       <label>
@@ -1376,6 +1410,9 @@ export default function Home() {
         <p>계획은 꼼꼼하게, 여행은 나답게.</p>
         <small>AI의 제안은 출발 전 확인이 필요합니다.</small>
       </footer>
+      {exportOpen && trip && (
+        <ExportDialog trip={trip} onClose={() => setExportOpen(false)} />
+      )}
       <Dialog.Root open={keyOpen} onOpenChange={setKeyOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="modal-overlay" />

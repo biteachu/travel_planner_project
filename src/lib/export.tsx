@@ -2,7 +2,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { Guidebook } from "../components/Guidebook";
 import { tripSchema, type Trip } from "./trip";
 import { guidebookCss } from "./guidebook-style";
-export function exportGuidebook(input: Trip) {
+import { defaultExportOptions, type ExportOptions } from "./export-options";
+export function exportGuidebook(
+  input: Trip,
+  options: ExportOptions = defaultExportOptions,
+) {
   const trip = tripSchema.parse(input);
   const title = trip.title.replace(
     /[&<>"']/g,
@@ -17,7 +21,7 @@ export function exportGuidebook(input: Trip) {
     "</title><style>" +
     guidebookCss +
     "</style></head><body>" +
-    renderToStaticMarkup(<Guidebook trip={trip} />) +
+    renderToStaticMarkup(<Guidebook trip={trip} options={options} />) +
     "</body></html>"
   );
 }
