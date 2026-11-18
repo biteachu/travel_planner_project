@@ -250,11 +250,18 @@ export async function runAgent(
   }
   if (stage === "review") {
     const reviewed = await json(
-      "검토 역할: independently check schedule feasibility, missing user preferences, confirmed reservation conflicts, evidence coverage, costs and unrealistic transit. Return only actionable Korean warnings. Do not claim to have checked external sources that were not provided.",
+      "검토 역할: independently check CURRENT schedule feasibility, missing preferences, reservations, evidence and costs. Do not repeat resolved warnings. Return actionable Korean warnings and up to 2 repairDates where pace or ordering can improve with EXISTING evidence. Do not request repair to fabricate missing facts or prices or move locked bookings. Do not claim external checking beyond provided research.",
       { trip: prior, research: input.research },
-      z.object({ warnings: z.array(z.string().max(1000)).max(30) }),
+      z.object({
+        warnings: z.array(z.string().max(1000)).max(30),
+        repairDates: z.array(z.string()).max(2),
+      }),
     );
     return {
+      repairDates: reviewed.repairDates.filter((date) =>
+        prior.days.some((day) => day.date === date),
+      ),
+      reviewWarnings: reviewed.warnings,
       result: {
         ...prior,
         status: "확인 필요",

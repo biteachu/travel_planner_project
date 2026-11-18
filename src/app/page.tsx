@@ -1012,7 +1012,8 @@ export default function Home() {
               {generationWorkload(brief, outline).days}회, 예산·설명·검토 3회로
               총 {generationWorkload(brief, outline).calls}회의 단계 요청을
               진행합니다. 실패 후 재시도와 도구 내부 검색은 추가 사용량이 발생할
-              수 있습니다. 실제 비용은 사용 모델·입출력 길이·검색 사용량에 따라
+              수 있습니다. 검토 후 자동 수정과 재검토가 최대 두 차례씩
+              추가됩니다. 실제 비용은 사용 모델·입출력 길이·검색 사용량에 따라
               달라집니다.
             </p>
             <button

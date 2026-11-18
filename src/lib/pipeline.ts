@@ -20,7 +20,18 @@ export const checkpointSchema = z.object({
   researchCompleted: z.number().int().min(0).max(15).optional(),
   days: z.array(daySchema).max(31),
   trip: tripSchema.nullable(),
-  phase: z.enum(["research", "days", "budget", "curate", "review", "complete"]),
+  repairCount: z.number().int().min(0).max(2).optional(),
+  repairDate: z.string().optional(),
+  baseWarnings: z.array(z.string().max(5000)).max(100).optional(),
+  phase: z.enum([
+    "research",
+    "days",
+    "budget",
+    "curate",
+    "review",
+    "repair",
+    "complete",
+  ]),
   id: z.string().max(100),
 });
 export type Checkpoint = z.infer<typeof checkpointSchema>;
@@ -130,6 +141,43 @@ export async function advancePipeline(
     }
     return state;
   }
+  if (state.phase === "repair") {
+    if (!state.trip || !state.repairDate || (state.repairCount || 0) >= 2)
+      throw new Error("자동 수정 상태를 확인해 주세요.");
+    const prior = state.trip;
+    const response = await call("revise", {
+      trip: prior,
+      date: state.repairDate,
+      research: state.research,
+      instruction:
+        "검토 결과에 따라 선택한 날짜의 실행 가능성을 개선하세요. 기존 출처와 승인된 거점만 사용하고 모든 고정 일정과 활동 가능 시간을 지키세요. 확인되지 않은 정보는 만들지 말고 경고로 남기세요. 검토 내용: " +
+        prior.warnings.join(" / ").slice(0, 2200),
+    });
+    const proposed = z.object({ result: tripSchema }).parse(response).result;
+    const selected = proposed.days.find((day) => day.date === state.repairDate);
+    if (!selected) throw new Error("수정 대상 날짜가 응답에 없습니다.");
+    const next: Trip = {
+      ...prior,
+      days: prior.days.map((day) =>
+        day.date === state.repairDate ? selected : day,
+      ),
+      version: prior.version + 1,
+      updatedAt: new Date().toISOString(),
+      status: "확인 필요",
+    };
+    const violations = validateTrip(next, prior).filter((message) =>
+      message.includes("고정"),
+    );
+    violations.push(...dayConstraintIssues(prior.brief, selected));
+    if (violations.length) throw new Error(violations.join(" "));
+    if (hasUnknownSources(selected.activities, prior.sources))
+      throw new Error("자동 수정안에 조사하지 않은 출처가 있습니다.");
+    state.trip = next;
+    state.days = next.days;
+    state.repairCount = (state.repairCount || 0) + 1;
+    state.phase = "review";
+    return state;
+  }
   if (
     state.phase === "budget" ||
     state.phase === "curate" ||
@@ -139,12 +187,53 @@ export async function advancePipeline(
       trip: state.trip,
       research: state.research,
     });
-    const next = z.object({ result: tripSchema }).parse(response).result;
+    const parsed = z
+      .object({
+        result: tripSchema,
+        repairDates: z.array(z.string()).max(2).optional(),
+        reviewWarnings: z.array(z.string().max(5000)).max(30).optional(),
+      })
+      .parse(response);
+    const next = parsed.result;
     if (hasUnknownSources(next.stories, state.research?.sources || []))
       throw new Error(
         "조사 자료에 없는 출처를 참조한 설명입니다. 다시 시도해 주세요.",
       );
     state.trip = next;
+    if (state.phase === "review") {
+      const diagnostics = new Set(validateTrip(current.trip!));
+      state.baseWarnings ??= (current.trip?.warnings || []).filter(
+        (warning) => !diagnostics.has(warning),
+      );
+      next.warnings = [
+        ...new Set([
+          ...state.baseWarnings,
+          ...(parsed.reviewWarnings || next.warnings),
+          ...validateTrip(next),
+        ]),
+      ].slice(0, 100);
+      const requested = (parsed.repairDates || []).find((date) =>
+        next.days.some((day) => day.date === date),
+      );
+      const codeIssueDate = next.days.find((day) =>
+        validateTrip(next).some((issue) => issue.includes(day.date)),
+      )?.date;
+      const repairDate = requested || codeIssueDate;
+      if (repairDate && (state.repairCount || 0) < 2) {
+        state.repairDate = repairDate;
+        state.phase = "repair";
+      } else {
+        if (repairDate)
+          next.warnings = [
+            ...new Set([
+              ...next.warnings,
+              "자동 수정 한도에 도달했습니다. 남은 검토 항목을 직접 확인해 주세요.",
+            ]),
+          ].slice(-100);
+        state.phase = "complete";
+      }
+      return state;
+    }
     state.phase =
       state.phase === "budget"
         ? "curate"
@@ -163,5 +252,7 @@ export function pipelineLabel(s: Checkpoint) {
   if (s.phase === "budget") return "예산: 경비 누락과 초과를 확인하고 있습니다";
   if (s.phase === "curate") return "큐레이터: 현지 이야기를 정리하고 있습니다";
   if (s.phase === "review") return "검토: 일정과 출처를 확인하고 있습니다";
+  if (s.phase === "repair")
+    return `자동 수정: ${(s.repairCount || 0) + 1} / 2 · ${s.repairDate}`;
   return "가이드북 생성 완료";
 }

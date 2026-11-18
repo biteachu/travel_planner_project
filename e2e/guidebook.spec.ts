@@ -1,5 +1,83 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
+import { examples } from "../src/lib/examples";
+test("생성 후 검토·자동 수정·재검토를 거쳐 가이드북을 연다", async ({
+  page,
+}) => {
+  const stages: string[] = [];
+  let reviews = 0;
+  await page.route("**/api/agent", async (route) => {
+    const { stage, payload } = route.request().postDataJSON();
+    stages.push(stage);
+    let response;
+    if (stage === "outline")
+      response = {
+        result: {
+          title: "하루 여행",
+          summary: "모의 생성 검증",
+          bases: [
+            {
+              city: "히로시마",
+              nights: 0,
+              reason: "당일 여행",
+              neighborhood: "",
+            },
+          ],
+          questions: [],
+        },
+      };
+    else if (stage === "research")
+      response = { text: "", sources: [], method: "test" };
+    else if (stage === "day")
+      response = {
+        result: { ...structuredClone(examples[0].days[0]), date: payload.date },
+      };
+    else if (stage === "review") {
+      reviews++;
+      response = {
+        result: payload.trip,
+        repairDates: reviews === 1 ? [payload.trip.days[0].date] : [],
+        reviewWarnings: reviews === 1 ? ["첫 활동 조정"] : [],
+      };
+    } else if (stage === "revise") {
+      payload.trip.days[0].activities[0].title = "검토 후 다듬은 산책";
+      response = { result: payload.trip };
+    } else response = { result: payload.trip };
+    await route.fulfill({ json: response });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "API 키 설정", exact: true }).click();
+  await page
+    .getByLabel("API 키", { exact: true })
+    .fill("test-only-local-mock-key");
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
+  await page.getByRole("button", { name: "내 여행책 만들기" }).click();
+  await page.getByLabel("어느 나라로 떠나시나요?").fill("일본");
+  await page.getByLabel("여행 시작일").fill("2027-01-10");
+  await page.getByLabel("여행 종료일").fill("2027-01-10");
+  await page.getByRole("button", { name: "다음 단계" }).click();
+  await page.getByRole("button", { name: "다음 단계" }).click();
+  await page.getByRole("button", { name: "여행 골격 제안받기" }).click();
+  await page
+    .getByRole("button", { name: "이 구성으로 가이드북 만들기" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "검토 후 다듬은 산책", exact: true }),
+  ).toBeVisible();
+  expect(stages).toEqual([
+    "outline",
+    "research",
+    "day",
+    "budget",
+    "curate",
+    "review",
+    "revise",
+    "review",
+  ]);
+  expect(
+    await page.evaluate(() => localStorage.getItem("travel-pending-v1")),
+  ).toBeNull();
+});
 test("수동 환율로 비용을 계산하고 직접 수정하면 환산 기록을 해제한다", async ({
   page,
 }) => {
