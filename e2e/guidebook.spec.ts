@@ -1,6 +1,39 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
 import { examples } from "../src/lib/examples";
+test("예시 재생은 API 없이 단계 이동·일시 정지 후 가이드북으로 이어진다", async ({
+  page,
+}) => {
+  const calls: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/agent")) calls.push(request.url());
+  });
+  await page.clock.install();
+  await page.goto("/");
+  await page.getByRole("button", { name: "만드는 과정 살펴보기" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText(/AI·검색 API를 호출하거나/)).toBeVisible();
+  await dialog.getByRole("button", { name: "자동 재생", exact: true }).click();
+  await page.clock.fastForward(4500);
+  await expect(
+    dialog.getByText("예시 재생 · 2 / 6", { exact: true }),
+  ).toBeVisible();
+  await dialog.getByRole("button", { name: "일시 정지" }).click();
+  await page.clock.fastForward(9000);
+  await expect(
+    dialog.getByText("예시 재생 · 2 / 6", { exact: true }),
+  ).toBeVisible();
+  for (let step = 0; step < 4; step++)
+    await dialog
+      .getByRole("button", { name: "다음 단계", exact: true })
+      .click();
+  await dialog.getByRole("button", { name: "예시 가이드북 열기" }).click();
+  await expect(
+    page.getByRole("heading", { name: "바다 곁에서, 히로시마", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("체험용 예시", { exact: true })).toBeVisible();
+  expect(calls).toHaveLength(0);
+});
 test("생성 후 검토·자동 수정·재검토를 거쳐 가이드북을 연다", async ({
   page,
 }) => {

@@ -43,6 +43,7 @@ import { downloadFile } from "../lib/export";
 import { ExportDialog } from "../components/ExportDialog";
 import { ReservationsEditor } from "../components/ReservationsEditor";
 import { CostEditor } from "../components/CostEditor";
+import { DemoWalkthrough } from "../components/DemoWalkthrough";
 import { guidebookCss } from "../lib/guidebook-style";
 import { draftKey, readDraft, encodeDraft } from "../lib/draft";
 import { moveActivity } from "../lib/editing";
@@ -95,6 +96,7 @@ export default function Home() {
   const [key, setKey] = useState("");
   const [keyOpen, setKeyOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(false);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -682,6 +684,12 @@ export default function Home() {
                     }
                   >
                     예시 먼저 둘러보기 <ArrowUpRight size={16} />
+                  </button>
+                  <button
+                    className="text-button"
+                    onClick={() => setDemoOpen(true)}
+                  >
+                    만드는 과정 살펴보기
                   </button>
                 </div>
                 <p className="quiet-note">
@@ -1495,6 +1503,15 @@ export default function Home() {
         <p>계획은 꼼꼼하게, 여행은 나답게.</p>
         <small>AI의 제안은 출발 전 확인이 필요합니다.</small>
       </footer>
+      {demoOpen && (
+        <DemoWalkthrough
+          onClose={() => setDemoOpen(false)}
+          onOpenExample={() => {
+            setDemoOpen(false);
+            openExample(0);
+          }}
+        />
+      )}
       {exportOpen && trip && (
         <ExportDialog trip={trip} onClose={() => setExportOpen(false)} />
       )}
