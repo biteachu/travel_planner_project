@@ -42,6 +42,7 @@ import {
 import { downloadFile } from "../lib/export";
 import { ExportDialog } from "../components/ExportDialog";
 import { ReservationsEditor } from "../components/ReservationsEditor";
+import { CostEditor } from "../components/CostEditor";
 import { guidebookCss } from "../lib/guidebook-style";
 import { draftKey, readDraft, encodeDraft } from "../lib/draft";
 import { moveActivity } from "../lib/editing";
@@ -1197,26 +1198,16 @@ export default function Home() {
                           </button>
                         ))}
                       </div>
-                      <label>
-                        일행 전체 비용 · {trip.brief.currency}
-                        <input
-                          type="number"
-                          min="0"
-                          disabled={a.locked}
-                          placeholder="미확인"
-                          value={a.cost ?? ""}
-                          onChange={(e) => {
-                            const next = structuredClone(trip);
-                            next.days[day].activities[i].cost =
-                              e.target.value === ""
-                                ? null
-                                : Number(e.target.value);
-                            next.days[day].activities[i].costStatus =
-                              e.target.value === "" ? "미확인" : "입력";
-                            updateTrip(next);
-                          }}
-                        />
-                      </label>
+                      <CostEditor
+                        activity={a}
+                        currency={trip.brief.currency}
+                        index={i}
+                        onChange={(activity) => {
+                          const next = structuredClone(trip);
+                          next.days[day].activities[i] = activity;
+                          updateTrip(next);
+                        }}
+                      />
                     </div>
                   ))}
                   <button

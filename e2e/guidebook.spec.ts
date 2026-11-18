@@ -1,5 +1,31 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
+test("수동 환율로 비용을 계산하고 직접 수정하면 환산 기록을 해제한다", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: /한 도시에서, 조금 더 깊이 Hiroshima/ })
+    .click();
+  await page.getByRole("button", { name: "일정 다듬기", exact: true }).click();
+  const card = page.locator(".edit-card").first();
+  await card.getByText("다른 통화의 비용 환산", { exact: true }).click();
+  await card.getByLabel("원래 금액", { exact: true }).fill("1000");
+  await card.getByLabel("원래 통화", { exact: true }).selectOption("JPY");
+  await card.getByLabel("1 JPY당 KRW", { exact: true }).fill("9.5");
+  await card.getByLabel("환율 기준일", { exact: true }).fill("2026-11-18");
+  await card.getByLabel("환율 출처", { exact: true }).fill("테스트용 환율");
+  await card.getByRole("button", { name: "환산 금액 적용" }).click();
+  await expect(page.getByLabel("활동 1 비용", { exact: true })).toHaveValue(
+    "9500",
+  );
+  await page.getByRole("button", { name: "가이드북", exact: true }).click();
+  await expect(page.getByText(/환산:.*테스트용 환율/)).toBeVisible();
+  await expect(page.getByText(/현재 계산된 잔여 예산/)).toBeVisible();
+  await page.getByRole("button", { name: "일정 다듬기", exact: true }).click();
+  await page.getByLabel("활동 1 비용", { exact: true }).fill("2000");
+  await expect(card.getByText(/환산 기록:/)).toHaveCount(0);
+});
 test("추가 답변이 기존 취향을 보존한 채 생성 요청에 전달된다", async ({
   page,
 }) => {

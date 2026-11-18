@@ -106,6 +106,26 @@ export const briefSchema = z
     }
   });
 export type Brief = z.infer<typeof briefSchema>;
+export const conversionSchema = z.object({
+  originalAmount: z.number().min(0).max(1e9),
+  originalCurrency: z.enum(["KRW", "USD", "EUR", "JPY", "TRY"]),
+  rate: z.number().positive().max(1e9),
+  asOf: date,
+  source: z.string().trim().min(1).max(500),
+});
+export function convertedAmount(
+  amount: number,
+  rate: number,
+  currency: string,
+) {
+  const digits =
+    new Intl.NumberFormat("ko-KR", {
+      style: "currency",
+      currency,
+    }).resolvedOptions().maximumFractionDigits ?? 2;
+  const scale = 10 ** digits;
+  return Math.round((amount * rate + Number.EPSILON) * scale) / scale;
+}
 export const sourceSchema = z.object({
   id: z.string().max(100),
   title: text,
@@ -124,6 +144,7 @@ export const activitySchema = z.object({
   transport: text,
   cost: z.number().min(0).max(1e9).nullable(),
   costStatus: z.enum(["추정", "입력", "조회", "미확인"]),
+  conversion: conversionSchema.optional(),
   locked: z.boolean(),
   sourceIds: z.array(z.string()).max(30),
   alternative: text,
@@ -252,6 +273,22 @@ export const tripSchema = z.object({
 });
 export type Trip = z.infer<typeof tripSchema>;
 export type Activity = z.infer<typeof activitySchema>;
+export function preserveUserConversions(
+  activities: Activity[],
+  previous: Activity[] = [],
+): Activity[] {
+  return activities.map((activity) => {
+    const { conversion: _, ...rest } = activity;
+    const old = previous.find((item) => item.id === activity.id);
+    return old?.conversion && old.cost === activity.cost
+      ? {
+          ...rest,
+          costStatus: old.costStatus,
+          conversion: structuredClone(old.conversion),
+        }
+      : rest;
+  });
+}
 export function dayCount(start: string, end: string) {
   return Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1;
 }
@@ -282,7 +319,6 @@ export function money(n: number, currency: string) {
   return new Intl.NumberFormat("ko-KR", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
   }).format(n);
 }
 export function costSummary(t: Trip) {
@@ -341,6 +377,16 @@ export function validateTrip(t: Trip, previous?: Trip): string[] {
       ids.add(a.id);
       if (a.sourceIds.some((id) => !t.sources.some((s) => s.id === id)))
         issues.push(`${a.title}: 연결되지 않은 출처가 있습니다.`);
+      if (
+        a.conversion &&
+        a.cost !==
+          convertedAmount(
+            a.conversion.originalAmount,
+            a.conversion.rate,
+            t.brief.currency,
+          )
+      )
+        issues.push(`${a.title}: 환산 기록과 비용이 일치하지 않습니다.`);
     }
   }
   if (previous) {

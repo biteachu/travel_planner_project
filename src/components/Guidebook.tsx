@@ -172,6 +172,18 @@ export function Guidebook({
                     )}
                   </div>
                   <div className="sources-inline">{sources(a.sourceIds)}</div>
+                  {options.budget && a.conversion && (
+                    <p className="fine-print">
+                      환산:{" "}
+                      {money(
+                        a.conversion.originalAmount,
+                        a.conversion.originalCurrency,
+                      )}{" "}
+                      × {a.conversion.rate} {trip.brief.currency} / 기준일{" "}
+                      {a.conversion.asOf} / 출처 {a.conversion.source} (사용자
+                      입력)
+                    </p>
+                  )}
                   {options.details &&
                     (options.lodging || a.kind !== "숙박") &&
                     a.alternative && (
@@ -227,6 +239,27 @@ export function Guidebook({
               <strong>{total.unknown}개 항목</strong>
             </div>
           </div>
+          <p>
+            {total.knownCount ? (
+              <>
+                <strong>
+                  {total.known > trip.brief.budget
+                    ? "현재 계산된 초과 금액"
+                    : "현재 계산된 잔여 예산"}
+                  :{" "}
+                  {money(
+                    Math.abs(trip.brief.budget - total.known),
+                    trip.brief.currency,
+                  )}
+                </strong>
+                <br />
+                미확인 비용과 미입력 경비는 차감하지 않은 금액이며, 확정된 여유
+                금액이 아닙니다.
+              </>
+            ) : (
+              "비용이 아직 입력되지 않아 잔여 예산을 계산하지 않았습니다."
+            )}
+          </p>
           <table className="cost-table">
             <caption>항목별 경비</caption>
             <thead>

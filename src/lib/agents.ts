@@ -13,6 +13,7 @@ import {
   daySchema,
   fixedActivities,
   dayConstraintIssues,
+  preserveUserConversions,
   type Trip,
   type Outline,
   type Brief,
@@ -150,6 +151,10 @@ export async function runAgent(
     );
     const t: Trip = {
       ...result,
+      days: result.days.map((day) => ({
+        ...day,
+        activities: preserveUserConversions(day.activities),
+      })),
       id,
       version: 1,
       brief: input.brief,
@@ -206,6 +211,7 @@ export async function runAgent(
       daySchema,
     );
     if (result.date !== input.date) throw new Error("INVALID_DATE");
+    result.activities = preserveUserConversions(result.activities);
     if (dayConstraintIssues(input.brief, result).length)
       throw new Error("CONSTRAINT_VIOLATION");
     if (hasUnknownSources(result.activities, input.research.sources))
@@ -295,7 +301,14 @@ export async function runAgent(
       ...prior,
       days: prior.days.map((d) =>
         d.date === input.date
-          ? result.days.find((x) => x.date === input.date) || d
+          ? {
+              ...(result.days.find((x) => x.date === input.date) || d),
+              activities: preserveUserConversions(
+                (result.days.find((x) => x.date === input.date) || d)
+                  .activities,
+                d.activities,
+              ),
+            }
           : d,
       ),
       version: prior.version + 1,

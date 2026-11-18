@@ -824,6 +824,19 @@ label small {
   padding: 20px;
   min-width: 0;
 }
+.cost-conversion {
+  margin-top: 15px;
+  font-size: 13px;
+}
+.cost-conversion summary {
+  cursor: pointer;
+  color: #174e49;
+}
+.cost-conversion fieldset {
+  border: 0;
+  padding: 10px 0 0;
+  min-width: 0;
+}
 .reservation-row {
   display: flex;
   justify-content: space-between;
