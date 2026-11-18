@@ -1,6 +1,10 @@
 # 공개 배포와 실제 연결 검증
 
-상태: 배포 설정 코드 준비. 공개 URL·실제 계정 연결 검증은 아직 완료하지 않았다.
+상태: 2026-11-18 Vercel 운영 배포 완료. 공개 주소는 https://travel-planner-project-eight.vercel.app 이다. 키 없는 데스크톱·모바일 E2E 2건으로 예시 편집·보관·HTML 다운로드·오프라인 열람을 확인했다. 실제 Gemini 생성과 이메일 로그인·사용자별 저장 검증은 남아 있다.
+
+Supabase 공개 URL·anon 키, 서버 전용 service_role 키, `AGENT_LIMITER_MODE=database`를 Production/Preview 환경에 설정했다. 서버 키는 민감한 환경변수로 등록했으며 저장소에 값은 기록하지 않는다. Supabase Site URL과 Redirect URL을 위 공개 주소로 설정했다. 배포 서버에 실제 키가 아닌 임의 검사용 문자열과 잘못된 여행 입력을 보내, DB 실행 허가를 거친 뒤 입력 오류 400으로 반환되는 것을 확인했다. 이 검사는 Gemini를 호출하지 않는다.
+
+Supabase 대시보드가 기존 JWT 키의 2027년 초 종료 예정 안내를 표시했다. 현재 코드는 service_role JWT 방식이며, 장기 운영 전 새 publishable/secret 키 방식으로 전환하고 공식 안내·호환성을 재검증해야 한다.
 
 ## Vercel 연결
 
