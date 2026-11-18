@@ -42,6 +42,7 @@ import {
 import { downloadFile, exportGuidebook } from "../lib/export";
 import { guidebookCss } from "../lib/guidebook-style";
 import { draftKey, readDraft, encodeDraft } from "../lib/draft";
+import { moveActivity } from "../lib/editing";
 import {
   checkpointSchema,
   createCheckpoint,
@@ -174,6 +175,7 @@ export default function Home() {
     navigate("work");
   }
   function updateTrip(next: Trip) {
+    setCandidate(null);
     setTrip({
       ...next,
       version: next.version + 1,
@@ -1023,6 +1025,7 @@ export default function Home() {
                     고정 항목은 AI 재생성 시 보존됩니다. 수동 수정 후에는
                     영업시간과 동선을 다시 확인해 주세요.
                   </p>
+                  <p className="quiet-note">앞으로·뒤로 이동하면 이웃 활동과 시작 시간을 교환합니다. 체류 시간과 이동 정보는 유지되므로 아래 자동 검사와 동선을 확인해 주세요.</p>
                   {trip.days[day]?.activities.map((a, i) => (
                     <div className="edit-card" key={a.id}>
                       <div className="edit-top">
@@ -1084,6 +1087,40 @@ export default function Home() {
                           updateTrip(next);
                         }}
                       />
+                      <label>
+                        체류 시간 · 분
+                        <input
+                          aria-label={`활동 ${i + 1} 체류 시간`}
+                          type="number"
+                          min="0"
+                          max="1440"
+                          step="1"
+                          value={a.duration}
+                          disabled={a.locked}
+                          onChange={(e) => {
+                            const duration = Number(e.target.value);
+                            if (!Number.isInteger(duration) || duration < 0 || duration > 1440) return;
+                            const next = structuredClone(trip);
+                            next.days[day].activities[i].duration = duration;
+                            updateTrip(next);
+                          }}
+                        />
+                      </label>
+                      <div className="hero-actions">
+                        {([-1, 1] as const).map((direction) => (
+                          <button
+                            key={direction}
+                            className="text-button"
+                            aria-label={`활동 ${i + 1} ${direction === -1 ? "앞으로" : "뒤로"}`}
+                            disabled={a.locked || !trip.days[day].activities[i + direction] || trip.days[day].activities[i + direction]?.locked}
+                            onClick={() => {
+                              updateTrip(moveActivity(trip, day, i, direction));
+                              setCandidate(null);
+                              setNotice("활동 순서와 시작 시간을 교환했습니다. 이동 정보와 시간 겹침을 확인해 주세요.");
+                            }}
+                          >{direction === -1 ? "앞으로" : "뒤로"}</button>
+                        ))}
+                      </div>
                       <label>
                         일행 전체 비용 · {trip.brief.currency}
                         <input

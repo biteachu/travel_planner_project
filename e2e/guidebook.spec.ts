@@ -1,5 +1,20 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
+test("체류 시간과 순서를 바꾸고 고정 일정은 보호한다", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /한 도시에서, 조금 더 깊이 Hiroshima/ }).click();
+  await page.getByRole("button", { name: "일정 다듬기", exact: true }).click();
+  const firstTitle = await page.getByLabel("활동 1 이름", { exact: true }).inputValue();
+  await page.getByLabel("활동 1 체류 시간", { exact: true }).fill("600");
+  await expect(page.getByText(/시간이 겹칩니다/).first()).toBeVisible();
+  await page.getByLabel("활동 1 뒤로", { exact: true }).click();
+  await expect(page.getByLabel("활동 2 이름", { exact: true })).toHaveValue(firstTitle);
+  await expect(page.getByLabel("활동 2 체류 시간", { exact: true })).toHaveValue("600");
+  await page.getByRole("button", { name: "일정 고정", exact: true }).nth(1).click();
+  await expect(page.getByLabel("활동 2 체류 시간", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("활동 1 뒤로", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("활동 2 앞으로", { exact: true })).toBeDisabled();
+});
 test("미완성 여행 조건을 새로고침 후 복원하고 지운다", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "내 여행책 만들기" }).click();
