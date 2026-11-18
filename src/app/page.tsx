@@ -51,6 +51,7 @@ import {
   createCheckpoint,
   advancePipeline,
   pipelineLabel,
+  generationWorkload,
   type Checkpoint,
 } from "../lib/pipeline";
 
@@ -976,6 +977,15 @@ export default function Home() {
             <p>
               숙박 합계 {outline.bases.reduce((s, b) => s + b.nights, 0)}박 /
               여행 {datesBetween(brief.startDate, brief.endDate).length}일
+            </p>
+            <p className="quiet-note">
+              기본 생성은 거점 조사{" "}
+              {generationWorkload(brief, outline).research}회, 날짜별 일정{" "}
+              {generationWorkload(brief, outline).days}회, 예산·설명·검토 3회로
+              총 {generationWorkload(brief, outline).calls}회의 단계 요청을
+              진행합니다. 실패 후 재시도와 도구 내부 검색은 추가 사용량이 발생할
+              수 있습니다. 실제 비용은 사용 모델·입출력 길이·검색 사용량에 따라
+              달라집니다.
             </p>
             <button
               className="primary"

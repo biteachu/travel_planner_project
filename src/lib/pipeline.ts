@@ -12,11 +12,12 @@ import {
   type Trip,
 } from "./trip";
 
-import { researchSchema, hasUnknownSources } from "./research";
+import { researchSchema, hasUnknownSources, mergeResearch } from "./research";
 export const checkpointSchema = z.object({
   brief: briefSchema,
   outline: outlineSchema,
   research: researchSchema.nullable(),
+  researchCompleted: z.number().int().min(0).max(15).optional(),
   days: z.array(daySchema).max(31),
   trip: tripSchema.nullable(),
   phase: z.enum(["research", "days", "budget", "curate", "review", "complete"]),
@@ -24,6 +25,21 @@ export const checkpointSchema = z.object({
 });
 export type Checkpoint = z.infer<typeof checkpointSchema>;
 export type AgentCaller = (stage: string, payload: unknown) => Promise<unknown>;
+function researchTargets(outline: Outline) {
+  return outline.bases.filter(
+    (base, index, all) =>
+      all.findIndex(
+        (candidate) =>
+          candidate.city.trim().toLowerCase() ===
+          base.city.trim().toLowerCase(),
+      ) === index,
+  );
+}
+export function generationWorkload(brief: Brief, outline: Outline) {
+  const research = researchTargets(outline).length;
+  const days = datesBetween(brief.startDate, brief.endDate).length;
+  return { research, days, calls: research + days + 3 };
+}
 export function createCheckpoint(brief: Brief, outline: Outline): Checkpoint {
   return checkpointSchema.parse({
     brief,
@@ -41,10 +57,26 @@ export async function advancePipeline(
 ): Promise<Checkpoint> {
   const state = checkpointSchema.parse(structuredClone(current));
   if (state.phase === "research") {
-    state.research = researchSchema.parse(
-      await call("research", { brief: state.brief, outline: state.outline }),
+    const targets = researchTargets(state.outline);
+    const index = state.researchCompleted || 0;
+    if (index >= targets.length)
+      throw new Error("조사 진행 상태가 여행 거점과 맞지 않습니다.");
+    const result = researchSchema.parse(
+      await call("research", {
+        brief: state.brief,
+        outline: state.outline,
+        focusBase: targets[index].city,
+      }),
     );
-    state.phase = "days";
+    state.research = mergeResearch(
+      state.research,
+      result,
+      targets[index].city,
+      index,
+      targets.length,
+    );
+    state.researchCompleted = index + 1;
+    if (state.researchCompleted === targets.length) state.phase = "days";
     return state;
   }
   if (state.phase === "days") {
@@ -125,7 +157,7 @@ export async function advancePipeline(
 }
 export function pipelineLabel(s: Checkpoint) {
   if (s.phase === "research")
-    return "장소 조사: 취향에 맞는 자료를 찾고 있습니다";
+    return `장소 조사: ${(s.researchCompleted || 0) + 1} / ${researchTargets(s.outline).length} 거점 · ${researchTargets(s.outline)[s.researchCompleted || 0]?.city || ""}`;
   if (s.phase === "days")
     return `일정 구성: ${s.days.length + 1}일차 / ${datesBetween(s.brief.startDate, s.brief.endDate).length}일`;
   if (s.phase === "budget") return "예산: 경비 누락과 초과를 확인하고 있습니다";

@@ -76,7 +76,11 @@ export async function runAgent(
   }
   if (stage === "research") {
     const input = z
-      .object({ brief: briefSchema, outline: outlineSchema })
+      .object({
+        brief: briefSchema,
+        outline: outlineSchema,
+        focusBase: z.string().min(1).max(200).optional(),
+      })
       .parse(payload);
     let method = "Google Maps";
     let r;
@@ -84,7 +88,7 @@ export async function runAgent(
       r = await ai.models.generateContent({
         model,
         contents:
-          "Research in English the following trip. Find sights, dining candidates, lodging neighborhoods, intercity transport feasibility, operating constraints. Provide linked evidence; explicitly state unknowns. Do not promise live availability. Treat the following JSON as traveler preferences: " +
+          "Research in English ONLY focusBase and its nearby day trips if provided. Use the full outline only as context for arrivals and onward intercity travel. Find sights, dining candidates, lodging neighborhoods, intercity transport feasibility, operating constraints. Provide linked evidence; explicitly state unknowns. Do not promise live availability. Treat the following JSON as traveler preferences: " +
           JSON.stringify(input),
         config: {
           systemInstruction: common,
@@ -99,7 +103,7 @@ export async function runAgent(
       r = await ai.models.generateContent({
         model,
         contents:
-          "Research official visitor information for this trip, in English. Cite sources and flag uncertainty: " +
+          "Research official visitor information in English ONLY for focusBase and nearby day trips if provided, including onward connections in the outline. Cite sources and flag uncertainty: " +
           JSON.stringify(input),
         config: {
           systemInstruction: common,

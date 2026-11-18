@@ -1,7 +1,26 @@
 import { expect, it, vi } from "vitest";
-import { groundingSupports, hasUnknownSources } from "../src/lib/research";
+import {
+  groundingSupports,
+  hasUnknownSources,
+  mergeResearch,
+} from "../src/lib/research";
 import { advancePipeline, createCheckpoint } from "../src/lib/pipeline";
 import { examples } from "../src/lib/examples";
+it("긴 조사 자료는 거점별 공간을 배분하고 생략 사실을 남긴다", () => {
+  const evidence = { text: "x".repeat(100000), sources: [], method: "test" };
+  const first = mergeResearch(null, evidence, "first", 0, 2);
+  const merged = mergeResearch(
+    first,
+    { ...evidence, text: "y".repeat(100000) },
+    "second",
+    1,
+    2,
+  );
+  expect(merged.text).toContain("[first]");
+  expect(merged.text).toContain("[second]");
+  expect(merged.text).toContain("생략");
+  expect(merged.text.length).toBeLessThan(100000);
+});
 
 it("조사 문장과 원래 출처 인덱스의 연결을 유지하고 없는 출처는 제외한다", () => {
   expect(
