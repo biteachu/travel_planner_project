@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { runAgent, stageSchema } from "../../../lib/agents";
+import { readLimitedBody, RequestTooLarge } from "../../../lib/request-body";
 export const runtime = "nodejs";
 export const maxDuration = 240;
 const windows = new Map<
@@ -24,12 +25,7 @@ export async function POST(request: NextRequest) {
   let slot: { count: number; start: number; active: number } | undefined;
   let acquired = false;
   try {
-    const body = await request.text();
-    if (body.length > 350000)
-      return NextResponse.json(
-        { error: "여행 데이터가 너무 큽니다. 구간을 줄여 주세요." },
-        { status: 413, headers },
-      );
+    const body = await readLimitedBody(request);
     const parsed = input.parse(JSON.parse(body));
     const hash = createHash("sha256").update(parsed.key).digest("hex");
     const now = Date.now();
@@ -60,6 +56,11 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json(result, { headers });
   } catch (e) {
+    if (e instanceof RequestTooLarge)
+      return NextResponse.json(
+        { error: "여행 데이터가 너무 큽니다. 구간을 줄여 주세요." },
+        { status: 413, headers },
+      );
     // Never return provider error text: it can include request content or credentials.
     const status = (e as { status?: number }).status;
     const invalid = e instanceof z.ZodError || e instanceof SyntaxError;
