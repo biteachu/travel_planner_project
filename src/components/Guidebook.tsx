@@ -77,6 +77,19 @@ export function Guidebook({
       <section id="overview">
         <p className="section-kicker">여행의 큰 그림</p>
         <h2>어디에 머물고, 어떻게 여행할까요</h2>
+        {(trip.brief.firstDayStart || trip.brief.lastDayEnd) && (
+          <p>
+            활동 가능 시간 ·{" "}
+            {trip.brief.firstDayStart
+              ? `첫날 ${trip.brief.firstDayStart}부터`
+              : "첫날 시작 제한 없음"}{" "}
+            /{" "}
+            {trip.brief.lastDayEnd
+              ? `마지막 날 ${trip.brief.lastDayEnd}까지`
+              : "마지막 날 종료 제한 없음"}{" "}
+            (현지 시간, 사용자 입력)
+          </p>
+        )}
         <div className="base-grid">
           {trip.bases.map((b, i) => (
             <div key={i}>

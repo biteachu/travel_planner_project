@@ -516,6 +516,31 @@ export default function Home() {
           onChange={(e) => field("reservations", e.target.value)}
         />
       </label>
+      <label>
+        첫날 활동 시작 가능 시간
+        <input
+          type="time"
+          value={brief.firstDayStart || ""}
+          onChange={(e) => field("firstDayStart", e.target.value)}
+        />
+        <small>현지 시간 · 입국 수속과 공항 이동을 마친 뒤 가능한 시간</small>
+      </label>
+      <label>
+        마지막 날 활동 종료 시간
+        <input
+          type="time"
+          value={brief.lastDayEnd || ""}
+          onChange={(e) => field("lastDayEnd", e.target.value)}
+        />
+        <small>
+          현지 시간 · 공항 이동과 출국 수속에 필요한 시간을 미리 제외해 주세요.
+        </small>
+      </label>
+      <p className="quiet-note full">
+        위 시간은 관광·식사·이동·숙박 등 모든 일정 항목에 적용됩니다. 비워 두면
+        코드로 시간대를 제한하지 않습니다. 항공편의 실제 운항과 공항별 수속
+        시간은 직접 확인해 주세요.
+      </p>
       <ReservationsEditor
         brief={brief}
         onChange={(fixedEvents) =>

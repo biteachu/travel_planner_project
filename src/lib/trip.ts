@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 const text = z.string().max(5000);
+const optionalTime = z
+  .string()
+  .regex(/^$|^([01]\d|2[0-3]):[0-5]\d$/)
+  .optional();
 const date = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -33,6 +37,8 @@ export const briefSchema = z
     avoid: text,
     arrival: text,
     departure: text,
+    firstDayStart: optionalTime,
+    lastDayEnd: optionalTime,
     reservations: text,
     fixedEvents: z.array(fixedEventSchema).max(50).optional(),
   })
@@ -42,6 +48,16 @@ export const briefSchema = z
     "한 번에 최대 31일까지 계획할 수 있습니다",
   )
   .superRefine((brief, ctx) => {
+    if (
+      brief.startDate === brief.endDate &&
+      brief.firstDayStart &&
+      brief.lastDayEnd &&
+      brief.firstDayStart >= brief.lastDayEnd
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "당일 여행의 활동 종료 시간은 시작 시간보다 늦어야 합니다.",
+      });
     const ids = new Set<string>();
     for (const event of brief.fixedEvents || []) {
       if (ids.has(event.id))
@@ -56,6 +72,18 @@ export const briefSchema = z
           message: `${event.title}: 확정 일정 날짜가 여행 기간 밖입니다.`,
         });
       const start = minutes(event.time);
+      if (
+        (event.date === brief.startDate &&
+          brief.firstDayStart &&
+          start < minutes(brief.firstDayStart)) ||
+        (event.date === brief.endDate &&
+          brief.lastDayEnd &&
+          start + event.duration > minutes(brief.lastDayEnd))
+      )
+        ctx.addIssue({
+          code: "custom",
+          message: `${event.title}: 확정 일정이 활동 가능 시간 밖입니다.`,
+        });
       if (start + event.duration > 1440)
         ctx.addIssue({
           code: "custom",
@@ -162,6 +190,31 @@ export function fixedDayIssues(
       );
     return issues;
   });
+}
+export function dayConstraintIssues(
+  brief: Brief,
+  day: z.infer<typeof daySchema>,
+): string[] {
+  const issues = fixedDayIssues(brief, day);
+  for (const activity of day.activities) {
+    if (
+      day.date === brief.startDate &&
+      brief.firstDayStart &&
+      minutes(activity.time) < minutes(brief.firstDayStart)
+    )
+      issues.push(
+        `${day.date}: ${activity.title} 활동이 첫날 시작 가능 시간보다 이릅니다.`,
+      );
+    if (
+      day.date === brief.endDate &&
+      brief.lastDayEnd &&
+      minutes(activity.time) + activity.duration > minutes(brief.lastDayEnd)
+    )
+      issues.push(
+        `${day.date}: ${activity.title} 활동이 마지막 날 종료 시간 이후까지 이어집니다.`,
+      );
+  }
+  return issues;
 }
 export const baseSchema = z.object({
   city: z.string().min(1).max(200),
@@ -271,7 +324,7 @@ export function validateTrip(t: Trip, previous?: Trip): string[] {
       issues.push(`${story.title}: 연결되지 않은 출처가 있습니다.`);
   }
   for (const d of t.days) {
-    issues.push(...fixedDayIssues(t.brief, d));
+    issues.push(...dayConstraintIssues(t.brief, d));
     let lastEnd = 0;
     for (const a of [...d.activities].sort((a, b) =>
       a.time.localeCompare(b.time),

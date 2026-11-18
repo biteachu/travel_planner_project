@@ -66,15 +66,17 @@ export async function POST(request: NextRequest) {
     const message = e instanceof Error ? e.message : "";
     const error = invalid
       ? "입력 또는 AI 응답 형식이 올바르지 않습니다. 조건을 확인하고 다시 시도해 주세요."
-      : message === "LOCKED_CHANGED"
-        ? "고정 일정이 변경된 수정안은 적용할 수 없습니다."
-        : message === "ABORTED"
-          ? "요청을 중단했습니다."
-          : status === 401 || status === 403
-            ? "API 키와 모델 사용 권한을 확인해 주세요."
-            : status === 429
-              ? "Google 사용량 한도에 도달했습니다. 요금·할당량을 확인해 주세요."
-              : "AI 요청을 완료하지 못했습니다. 키·모델 권한·네트워크를 확인하고 다시 시도해 주세요.";
+      : message === "CONSTRAINT_VIOLATION"
+        ? "확정 예약 또는 활동 가능 시간을 지키지 않은 일정입니다. 조건을 확인하고 다시 시도해 주세요."
+        : message === "LOCKED_CHANGED"
+          ? "고정 일정이 변경된 수정안은 적용할 수 없습니다."
+          : message === "ABORTED"
+            ? "요청을 중단했습니다."
+            : status === 401 || status === 403
+              ? "API 키와 모델 사용 권한을 확인해 주세요."
+              : status === 429
+                ? "Google 사용량 한도에 도달했습니다. 요금·할당량을 확인해 주세요."
+                : "AI 요청을 완료하지 못했습니다. 키·모델 권한·네트워크를 확인하고 다시 시도해 주세요.";
     return NextResponse.json(
       { error },
       { status: invalid ? 400 : status === 429 ? 429 : 502, headers },

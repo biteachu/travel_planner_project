@@ -8,6 +8,8 @@ test("확정 예약을 추가·복원하고 시간 충돌을 거절한다", asyn
   await page.getByLabel("여행 종료일").fill("2027-01-12");
   await page.getByRole("button", { name: "다음 단계" }).click();
   await page.getByRole("button", { name: "다음 단계" }).click();
+  await page.getByLabel("첫날 활동 시작 가능 시간").fill("14:00");
+  await page.getByLabel("마지막 날 활동 종료 시간").fill("15:00");
   await page.getByLabel("확정 일정 이름", { exact: true }).fill("미술관 입장");
   await page.getByLabel("확정 일정 날짜", { exact: true }).fill("2027-01-11");
   await page
@@ -25,6 +27,12 @@ test("확정 예약을 추가·복원하고 시간 충돌을 거절한다", asyn
   ).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "내 여행책 만들기" }).click();
+  await expect(page.getByLabel("첫날 활동 시작 가능 시간")).toHaveValue(
+    "14:00",
+  );
+  await expect(page.getByLabel("마지막 날 활동 종료 시간")).toHaveValue(
+    "15:00",
+  );
   await expect(
     page.getByRole("button", { name: "미술관 입장 확정 일정 삭제" }),
   ).toBeVisible();
