@@ -3,6 +3,16 @@ import {NextRequest} from 'next/server';
 const mocked=vi.hoisted(()=>({run:vi.fn()}));
 vi.mock('../src/lib/agents',async()=>{const {z}=await import('zod');return {runAgent:mocked.run,stageSchema:z.enum(['check'])}});
 import {POST} from '../src/app/api/agent/route';
+it('배포 환경에서 제한 DB 설정이 없으면 모델을 호출하지 않는다', async () => {
+  vi.stubEnv('VERCEL', '1');
+  vi.stubEnv('AGENT_LIMITER_MODE', 'database');
+  vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
+  try {
+    const response = await POST(request('test-limiter-unavailable'));
+    expect(response.status).toBe(503);
+    expect(mocked.run).not.toHaveBeenCalled();
+  } finally { vi.unstubAllEnvs(); }
+});
 it('UTF-8 바이트 한도를 넘는 본문은 모델 호출 없이 413으로 거절한다', async () => {
   const req = new NextRequest('http://localhost:3000/api/agent', {
     method: 'POST', headers: { origin: 'http://localhost:3000' },

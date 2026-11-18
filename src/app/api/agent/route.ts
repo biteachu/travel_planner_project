@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "node:crypto";
 import { z } from "zod";
 import { runAgent, stageSchema } from "../../../lib/agents";
 import { readLimitedBody, RequestTooLarge } from "../../../lib/request-body";
+import {
+  acquireAgentPermit,
+  LimiterUnavailable,
+} from "../../../lib/agent-limit";
 export const runtime = "nodejs";
 export const maxDuration = 240;
-const windows = new Map<
-  string,
-  { count: number; start: number; active: number }
->();
 const input = z.object({
-  key: z.string().min(15).max(300),
+  key: z.string().trim().min(15).max(300),
   stage: stageSchema,
   payload: z.unknown(),
 });
@@ -22,22 +21,12 @@ export async function POST(request: NextRequest) {
       { error: "허용되지 않은 요청 출처입니다." },
       { status: 403, headers },
     );
-  let slot: { count: number; start: number; active: number } | undefined;
-  let acquired = false;
+  let release: (() => Promise<void>) | null = null;
   try {
     const body = await readLimitedBody(request);
     const parsed = input.parse(JSON.parse(body));
-    const hash = createHash("sha256").update(parsed.key).digest("hex");
-    const now = Date.now();
-    for (const [k, v] of windows) {
-      if (now - v.start > 60000 && v.active === 0) windows.delete(k);
-    }
-    slot = windows.get(hash);
-    if (!slot) {
-      slot = { count: 0, start: now, active: 0 };
-      windows.set(hash, slot);
-    }
-    if (slot.active >= 1 || slot.count >= 15)
+    release = await acquireAgentPermit(parsed.key);
+    if (!release)
       return NextResponse.json(
         {
           error:
@@ -45,9 +34,6 @@ export async function POST(request: NextRequest) {
         },
         { status: 429, headers },
       );
-    slot.count++;
-    slot.active++;
-    acquired = true;
     const result = await runAgent(
       parsed.key,
       parsed.stage,
@@ -56,6 +42,14 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json(result, { headers });
   } catch (e) {
+    if (e instanceof LimiterUnavailable)
+      return NextResponse.json(
+        {
+          error:
+            "생성 서비스의 요청 제한 저장소에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        },
+        { status: 503, headers },
+      );
     if (e instanceof RequestTooLarge)
       return NextResponse.json(
         { error: "여행 데이터가 너무 큽니다. 구간을 줄여 주세요." },
@@ -87,6 +81,6 @@ export async function POST(request: NextRequest) {
       { status: invalid ? 400 : status === 429 ? 429 : 502, headers },
     );
   } finally {
-    if (slot && acquired) slot.active = Math.max(0, slot.active - 1);
+    await release?.();
   }
 }
