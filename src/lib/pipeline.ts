@@ -7,6 +7,7 @@ import {
   sourceSchema,
   datesBetween,
   validateTrip,
+  fixedDayIssues,
   type Brief,
   type Outline,
   type Trip,
@@ -71,6 +72,9 @@ export async function advancePipeline(
         throw new Error(
           "요청한 날짜와 다른 일정이 반환되었습니다. 다시 시도해 주세요.",
         );
+      const fixedIssues = fixedDayIssues(state.brief, day);
+      if (fixedIssues.length)
+        throw new Error(fixedIssues.join(" ") + " 다시 시도해 주세요.");
       state.days.push(day);
     }
     if (state.days.length === dates.length) {

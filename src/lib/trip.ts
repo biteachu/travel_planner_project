@@ -8,6 +8,15 @@ const date = z
     const d = new Date(v + "T00:00:00Z");
     return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
   }, "유효한 날짜를 입력해 주세요");
+export const fixedEventSchema = z.object({
+  id: z.string().min(1).max(80),
+  date,
+  time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  duration: z.number().int().min(1).max(1440),
+  title: z.string().trim().min(1).max(300),
+  kind: z.enum(["관광", "식사", "이동", "휴식", "숙박"]),
+});
+export type FixedEvent = z.infer<typeof fixedEventSchema>;
 export const briefSchema = z
   .object({
     country: z.string().min(1).max(100),
@@ -25,12 +34,48 @@ export const briefSchema = z
     arrival: text,
     departure: text,
     reservations: text,
+    fixedEvents: z.array(fixedEventSchema).max(50).optional(),
   })
   .refine((b) => b.endDate >= b.startDate, "종료일은 시작일 이후여야 합니다")
   .refine(
     (b) => dayCount(b.startDate, b.endDate) <= 31,
     "한 번에 최대 31일까지 계획할 수 있습니다",
-  );
+  )
+  .superRefine((brief, ctx) => {
+    const ids = new Set<string>();
+    for (const event of brief.fixedEvents || []) {
+      if (ids.has(event.id))
+        ctx.addIssue({
+          code: "custom",
+          message: "확정 일정 식별자가 중복되었습니다.",
+        });
+      ids.add(event.id);
+      if (event.date < brief.startDate || event.date > brief.endDate)
+        ctx.addIssue({
+          code: "custom",
+          message: `${event.title}: 확정 일정 날짜가 여행 기간 밖입니다.`,
+        });
+      const start = minutes(event.time);
+      if (start + event.duration > 1440)
+        ctx.addIssue({
+          code: "custom",
+          message: `${event.title}: 자정을 넘는 확정 일정은 날짜별로 나눠 주세요.`,
+        });
+      if (
+        (brief.fixedEvents || []).some(
+          (other) =>
+            other.id !== event.id &&
+            other.date === event.date &&
+            minutes(other.time) < start + event.duration &&
+            minutes(other.time) + other.duration > start,
+        )
+      )
+        ctx.addIssue({
+          code: "custom",
+          message: `${event.title}: 확정 일정끼리 시간이 겹칩니다.`,
+        });
+    }
+  });
 export type Brief = z.infer<typeof briefSchema>;
 export const sourceSchema = z.object({
   id: z.string().max(100),
@@ -60,6 +105,64 @@ export const daySchema = z.object({
   city: text,
   activities: z.array(activitySchema).max(30),
 });
+function minutes(time: string) {
+  const [hour, minute] = time.split(":").map(Number);
+  return hour * 60 + minute;
+}
+export function fixedActivities(
+  brief: Brief,
+  date: string,
+): z.infer<typeof activitySchema>[] {
+  return (brief.fixedEvents || [])
+    .filter((event) => event.date === date)
+    .map((event) => ({
+      id: `reserved-${event.id}`,
+      time: event.time,
+      duration: event.duration,
+      title: event.title,
+      kind: event.kind,
+      locked: true,
+      description: "사용자가 확정한 일정입니다.",
+      reason: "확정 예약 보호",
+      transport: "",
+      cost: null,
+      costStatus: "미확인",
+      sourceIds: [],
+      alternative: "",
+    }));
+}
+export function fixedDayIssues(
+  brief: Brief,
+  day: z.infer<typeof daySchema>,
+): string[] {
+  return fixedActivities(brief, day.date).flatMap((expected) => {
+    const actual = day.activities.find((a) => a.id === expected.id);
+    const issues: string[] = [];
+    if (
+      !actual ||
+      day.activities.filter((a) => a.id === expected.id).length !== 1 ||
+      ["time", "duration", "title", "kind", "locked"].some(
+        (key) =>
+          actual[key as keyof typeof actual] !==
+          expected[key as keyof typeof expected],
+      )
+    )
+      issues.push(`고정 일정 '${expected.title}'이 누락되거나 변경되었습니다.`);
+    const start = minutes(expected.time);
+    if (
+      day.activities.some(
+        (a) =>
+          a.id !== expected.id &&
+          minutes(a.time) < start + expected.duration &&
+          minutes(a.time) + a.duration > start,
+      )
+    )
+      issues.push(
+        `고정 일정 '${expected.title}'과 다른 활동의 시간이 겹칩니다.`,
+      );
+    return issues;
+  });
+}
 export const baseSchema = z.object({
   city: z.string().min(1).max(200),
   nights: z.number().int().min(0).max(30),
@@ -168,6 +271,7 @@ export function validateTrip(t: Trip, previous?: Trip): string[] {
       issues.push(`${story.title}: 연결되지 않은 출처가 있습니다.`);
   }
   for (const d of t.days) {
+    issues.push(...fixedDayIssues(t.brief, d));
     let lastEnd = 0;
     for (const a of [...d.activities].sort((a, b) =>
       a.time.localeCompare(b.time),

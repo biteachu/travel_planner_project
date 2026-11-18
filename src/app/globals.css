@@ -819,6 +819,21 @@ label small {
 .modal.export-modal {
   max-width: 960px;
 }
+.reservation-editor {
+  border: 1px solid #ccd8cc;
+  padding: 20px;
+  min-width: 0;
+}
+.reservation-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #ccd8cc;
+  padding: 12px 0;
+  margin-bottom: 15px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
 .export-options {
   border: 1px solid #ccd8cc;
   padding: 14px;

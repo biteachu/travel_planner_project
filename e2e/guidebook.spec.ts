@@ -1,5 +1,43 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs/promises";
+test("확정 예약을 추가·복원하고 시간 충돌을 거절한다", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "내 여행책 만들기" }).click();
+  await page.getByLabel("어느 나라로 떠나시나요?").fill("일본");
+  await page.getByLabel("여행 시작일").fill("2027-01-10");
+  await page.getByLabel("여행 종료일").fill("2027-01-12");
+  await page.getByRole("button", { name: "다음 단계" }).click();
+  await page.getByRole("button", { name: "다음 단계" }).click();
+  await page.getByLabel("확정 일정 이름", { exact: true }).fill("미술관 입장");
+  await page.getByLabel("확정 일정 날짜", { exact: true }).fill("2027-01-11");
+  await page
+    .getByRole("button", { name: "확정 일정 추가", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "미술관 입장 확정 일정 삭제" }),
+  ).toBeVisible();
+  await page.getByLabel("확정 일정 이름", { exact: true }).fill("겹치는 예약");
+  await page
+    .getByRole("button", { name: "확정 일정 추가", exact: true })
+    .click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "확정 일정끼리" }),
+  ).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "내 여행책 만들기" }).click();
+  await expect(
+    page.getByRole("button", { name: "미술관 입장 확정 일정 삭제" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "겹치는 예약 확정 일정 삭제" }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "미술관 입장 확정 일정 삭제" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "미술관 입장 확정 일정 삭제" }),
+  ).toHaveCount(0);
+});
 test("체류 시간과 순서를 바꾸고 고정 일정은 보호한다", async ({ page }) => {
   await page.goto("/");
   await page

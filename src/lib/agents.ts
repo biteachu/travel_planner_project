@@ -6,6 +6,8 @@ import {
   tripSchema,
   validateTrip,
   daySchema,
+  fixedActivities,
+  fixedDayIssues,
   type Trip,
   type Outline,
   type Brief,
@@ -159,6 +161,8 @@ export async function runAgent(
       status: "확인 필요",
       updatedAt: now,
     };
+    if (t.days.some((day) => fixedDayIssues(input.brief, day).length))
+      throw new Error("LOCKED_CHANGED");
     t.warnings = [
       ...new Set([
         ...t.warnings,
@@ -188,10 +192,17 @@ export async function runAgent(
       .parse(payload);
     const result = await json(
       "일정·이동 역할: plan ONLY requested date. Respect approved overnight bases and previous days, include intercity travel on base-change dates, food, rest, check-in buffers and total-party accommodation cost as a lodging activity where known. Unknown costs are null. Never repeat sights already visited. Respect first/last day arrival/departure and all reservations. Activities have unique IDs prefixed by date, 3-8 per day. Locked true for confirmed bookings. Only attach existing source IDs when supporting the claim. No invented prices or history.",
-      input,
+      {
+        ...input,
+        fixedActivities: fixedActivities(input.brief, input.date),
+        requirement:
+          "Include every supplied fixedActivities item unchanged. Plan other activities outside those time intervals.",
+      },
       daySchema,
     );
     if (result.date !== input.date) throw new Error("INVALID_DATE");
+    if (fixedDayIssues(input.brief, result).length)
+      throw new Error("LOCKED_CHANGED");
     return { result };
   }
   const input = z

@@ -41,6 +41,7 @@ import {
 } from "../lib/trip";
 import { downloadFile } from "../lib/export";
 import { ExportDialog } from "../components/ExportDialog";
+import { ReservationsEditor } from "../components/ReservationsEditor";
 import { guidebookCss } from "../lib/guidebook-style";
 import { draftKey, readDraft, encodeDraft } from "../lib/draft";
 import { moveActivity } from "../lib/editing";
@@ -508,13 +509,19 @@ export default function Home() {
         />
       </label>
       <label className="full">
-        이미 정해진 예약·꼭 지킬 일정
+        추가 예약 메모·꼭 지킬 조건
         <textarea
           placeholder="날짜, 시간, 숙소·방문지 이름만 입력하세요. 예약번호·여권정보는 입력하지 마세요."
           value={brief.reservations}
           onChange={(e) => field("reservations", e.target.value)}
         />
       </label>
+      <ReservationsEditor
+        brief={brief}
+        onChange={(fixedEvents) =>
+          setBrief((current) => ({ ...current, fixedEvents }))
+        }
+      />
     </div>,
   ];
   return (
@@ -1063,6 +1070,16 @@ export default function Home() {
                         />
                         <button
                           aria-label={a.locked ? "고정 해제" : "일정 고정"}
+                          disabled={(trip.brief.fixedEvents || []).some(
+                            (event) => a.id === `reserved-${event.id}`,
+                          )}
+                          title={
+                            (trip.brief.fixedEvents || []).some(
+                              (event) => a.id === `reserved-${event.id}`,
+                            )
+                              ? "여행 조건에서 등록한 확정 일정입니다."
+                              : undefined
+                          }
                           onClick={() => {
                             const next = structuredClone(trip);
                             next.days[day].activities[i].locked = !a.locked;
