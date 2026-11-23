@@ -1,8 +1,8 @@
 # 공개 배포와 실제 연결 검증
 
-상태: 2026-11-18 Vercel 운영 배포 완료. 공개 주소는 https://travel-planner-project-eight.vercel.app 이다. 키 없는 데스크톱·모바일 E2E 2건으로 예시 편집·보관·HTML 다운로드·오프라인 열람을 확인했다. 실제 Gemini 생성과 이메일 로그인·사용자별 저장 검증은 남아 있다.
+상태: 2026-11-18 Vercel 운영 배포 완료. 공개 주소는 https://travel-planner-project-eight.vercel.app 이다. 키 없는 데스크톱·모바일 E2E 2건으로 예시 편집·보관·HTML 다운로드·오프라인 열람을 확인했다. 실제 Claude 생성과 이메일 로그인·사용자별 저장 검증은 남아 있다.
 
-Supabase 공개 URL·anon 키, 서버 전용 service_role 키, `AGENT_LIMITER_MODE=database`를 Production/Preview 환경에 설정했다. 서버 키는 민감한 환경변수로 등록했으며 저장소에 값은 기록하지 않는다. Supabase Site URL과 Redirect URL을 위 공개 주소로 설정했다. 배포 서버에 실제 키가 아닌 임의 검사용 문자열과 잘못된 여행 입력을 보내, DB 실행 허가를 거친 뒤 입력 오류 400으로 반환되는 것을 확인했다. 이 검사는 Gemini를 호출하지 않는다.
+Supabase 공개 URL·anon 키, 서버 전용 service_role 키, `AGENT_LIMITER_MODE=database`를 Production/Preview 환경에 설정했다. 서버 키는 민감한 환경변수로 등록했으며 저장소에 값은 기록하지 않는다. Supabase Site URL과 Redirect URL을 위 공개 주소로 설정했다. 배포 서버에 실제 키가 아닌 임의 검사용 문자열과 잘못된 여행 입력을 보내, DB 실행 허가를 거친 뒤 입력 오류 400으로 반환되는 것을 확인했다. 이 검사는 Claude를 호출하지 않는다.
 
 Supabase 대시보드가 기존 JWT 키의 2027년 초 종료 예정 안내를 표시했다. 현재 코드는 service_role JWT 방식이며, 장기 운영 전 새 publishable/secret 키 방식으로 전환하고 공식 안내·호환성을 재검증해야 한다.
 
@@ -12,13 +12,19 @@ Supabase 대시보드가 기존 JWT 키의 2027년 초 종료 예정 안내를 �
 
 | 환경변수 | 설정 방식 |
 |---|---|
-| `GEMINI_MODEL` | 본인 키로 사용 가능함을 실제 확인한 모델 식별자. 미설정 시 코드 기본값 사용. 기본값을 검증된 모델이라고 간주하지 않는다. |
+| `ANTHROPIC_MODEL` | 본인 키로 사용 가능함을 실제 확인한 모델 식별자. 미설정 시 코드 기본값 사용. 기본값을 검증된 모델이라고 간주하지 않는다. |
 | `NEXT_PUBLIC_SUPABASE_URL` | 본인 Supabase 프로젝트 URL. 계정 저장을 연결할 때 설정. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | RLS를 사용하는 공개 anon 키. 서비스 역할 키를 넣지 않는다. |
 | `SUPABASE_SERVICE_ROLE_KEY` | 서버 전용 service_role JWT. DB 기반 요청 제한 함수 호출에만 사용하며 브라우저로 전달하지 않는다. 실제 값은 호스팅 환경변수에 직접 입력한다. |
 | `AGENT_LIMITER_MODE` | Vercel에서는 미설정이어도 `database`. 로컬 기본값은 `process`이며 실제 DB 검증 시 `database`로 설정한다. |
 
-개인 Gemini 키는 배포 환경변수에 넣지 않는다. 각 사용자가 웹앱의 API 키 설정에서 입력한다. 계정 저장을 설정하기 전에도 예시 열람·수동 편집·HTML 출력은 동작해야 한다. Supabase 공개 환경변수를 바꾸면 다시 배포하고 새 빌드를 확인한다.
+개인 Anthropic 키는 배포 환경변수에 넣지 않는다. 각 사용자가 웹앱의 API 키 설정에서 입력한다. 계정 저장을 설정하기 전에도 예시 열람·수동 편집·HTML 출력은 동작해야 한다. Supabase 공개 환경변수를 바꾸면 다시 배포하고 새 빌드를 확인한다.
+
+현재 기본 모델은 공식 모델 목록의 `claude-sonnet-5-5`다. 미설정 환경에서도 이 기본값을 쓰며, 사용자 키의 실제 접근 권한과 생성 품질은 별도 확인한다. 모델 조회 성공은 생성·과금 가능 여부의 전체 검증이 아니다. [공식 모델 목록](https://platform.claude.com/docs/en/models/overview)
+
+접속 링크에는 괄호·한글을 URL 안에 붙이지 않는다. `vercel.xn--app)-e11s`처럼 보인다면 링크 뒤 문자가 호스트명에 포함된 오류이며 아래 링크 또는 주소창에 정확한 주소를 사용한다.
+
+[공개 웹앱 열기](https://travel-planner-project-eight.vercel.app/)
 
 배포 후 로그인하지 않은 별도 브라우저에서 공개 URL을 열어 접근 제한 화면이 없는지 확인한다. 프로젝트의 인증 보호·환경 설정은 실제 계정에서 확인할 사항이며 로컬 설정 파일만으로 공개 접근이 검증되지는 않는다. 배포 URL은 확인한 후 README와 CHECKLIST에 기록한다.
 
@@ -33,7 +39,7 @@ Supabase 대시보드가 기존 JWT 키의 2027년 초 종료 예정 안내를 �
 
 ## 배포 주소에서 키 없는 흐름 검사
 
-아래 `실제배포주소`를 확인한 HTTPS 주소로 바꾼다. 설정하면 Playwright가 로컬 서버를 띄우지 않고 지정된 주소를 검사한다. 이 명령은 예시 열람·편집·HTML 다운로드·오프라인 표시를 데스크톱과 모바일 크기에서 검사하며 실제 Gemini 호출·계정 저장 성공을 증명하지 않는다.
+아래 `실제배포주소`를 확인한 HTTPS 주소로 바꾼다. 설정하면 Playwright가 로컬 서버를 띄우지 않고 지정된 주소를 검사한다. 이 명령은 예시 열람·편집·HTML 다운로드·오프라인 표시를 데스크톱과 모바일 크기에서 검사하며 실제 Claude 호출·계정 저장 성공을 증명하지 않는다.
 
 ```powershell
 $env:PLAYWRIGHT_BASE_URL = 'https://실제배포주소'

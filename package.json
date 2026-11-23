@@ -16,7 +16,7 @@
     "video:check-evidence": "node video/validate-evidence.mjs"
   },
   "dependencies": {
-    "@google/genai": "^3.6.0",
+    "@anthropic-ai/sdk": "^1.12.0",
     "@hookform/resolvers": "^7.0.7",
     "@radix-ui/react-dialog": "^1.3.1",
     "@supabase/supabase-js": "^2.119.0",

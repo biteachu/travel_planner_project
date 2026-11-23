@@ -277,7 +277,7 @@ export default function Home() {
   async function callAgent(stage: string, payload: unknown) {
     if (!key.trim()) {
       setKeyOpen(true);
-      throw new Error("본인의 Gemini API 키를 먼저 입력해 주세요.");
+      throw new Error("본인의 Anthropic API 키를 먼저 입력해 주세요.");
     }
     const ctrl = new AbortController();
     controller.current = ctrl;
@@ -1705,10 +1705,11 @@ export default function Home() {
         <Dialog.Portal>
           <Dialog.Overlay className="modal-overlay" />
           <Dialog.Content className="modal">
-            <Dialog.Title>나의 Gemini API 키</Dialog.Title>
+            <Dialog.Title>나의 Claude API 키</Dialog.Title>
             <Dialog.Description>
               입력한 키는 현재 화면의 메모리에만 보관합니다. AI 호출 시 앱
-              서버를 거쳐 Google에 전달하며, 새로고침하면 다시 입력해야 합니다.
+              서버를 거쳐 Anthropic에 전달하며, 새로고침하면 다시 입력해야
+              합니다.
             </Dialog.Description>
             <label>
               API 키
@@ -1718,19 +1719,19 @@ export default function Home() {
                 spellCheck={false}
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
-                placeholder="본인의 Gemini API 키"
+                placeholder="본인의 Anthropic API 키"
               />
             </label>
             <p className="quiet-note">
-              사용 요금은 키 소유자의 Google 프로젝트에 청구됩니다. 공용 키는
-              제공하지 않습니다.
+              사용 요금은 키 소유자의 Anthropic 계정에 청구됩니다. Claude 웹
+              구독과 API 사용은 별도입니다. 공용 키는 제공하지 않습니다.
             </p>
             <a
-              href="https://aistudio.google.com/apikey"
+              href="https://platform.claude.com/settings/keys"
               target="_blank"
               rel="noreferrer"
             >
-              Google AI Studio에서 키 관리 ↗
+              Claude Console에서 API 키 관리 ↗
             </a>
             <div className="modal-actions">
               <button
@@ -1749,7 +1750,9 @@ export default function Home() {
                   setBusy("키 연결을 확인하고 있습니다");
                   try {
                     await callAgent("check", {});
-                    setNotice("Gemini 연결을 확인했습니다.");
+                    setNotice(
+                      "Claude 모델 접근을 확인했습니다. 실제 생성 결과는 별도로 확인해 주세요.",
+                    );
                     setKeyOpen(false);
                   } catch (e) {
                     setError(e instanceof Error ? e.message : "연결 실패");

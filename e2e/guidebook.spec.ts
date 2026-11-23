@@ -778,6 +778,33 @@ test("키 없이 예시를 편집·보관·다운로드하고 오프라인 열�
     page.getByRole("button", { name: /바다 곁에서, 히로시마.*버전/ }),
   ).toBeVisible();
 });
+test("Claude 키 안내와 모델 접근 확인을 제공한다", async ({ page }) => {
+  await page.route("**/api/agent", async (route) => {
+    const body = route.request().postDataJSON();
+    expect(body.stage).toBe("check");
+    expect(body.key).toBe("test-only-anthropic-key");
+    await route.fulfill({
+      json: { connected: true, provider: "Anthropic", model: "test-model" },
+    });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "API 키 설정", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("Anthropic");
+  await expect(
+    page.getByRole("heading", { name: "나의 Claude API 키", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("API 키", { exact: true })
+    .fill("test-only-anthropic-key");
+  await page.getByRole("button", { name: "연결 확인", exact: true }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Claude 모델 접근을 확인" }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain(
+    "test-only-anthropic-key",
+  );
+});
+
 test("키는 영구 저장하지 않고 새로고침 시 지운다", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "API 키 설정", exact: true }).click();

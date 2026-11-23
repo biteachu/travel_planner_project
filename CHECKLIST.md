@@ -16,7 +16,7 @@
 
 - [x] 공개 저장소 생성: https://github.com/biteachu/travel_planner_project
 - [x] 공개 배포 주소 및 키 없는 이용 흐름 검증: https://travel-planner-project-eight.vercel.app
-- [ ] 본인 Gemini 키 생성과 이메일 로그인·계정 저장의 실제 사용 검증
+- [ ] 본인 Anthropic 키 생성과 이메일 로그인·계정 저장의 실제 사용 검증
 - [ ] 서로 다른 5일 이상 실제 커밋
 - [ ] 디자인 수정 3개 이상과 사용자 지시·이유 증거
 - [ ] 과정 영상 2~3분, 실제 전후 비교 3개 이상

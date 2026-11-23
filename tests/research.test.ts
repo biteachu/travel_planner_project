@@ -1,9 +1,5 @@
 import { expect, it, vi } from "vitest";
-import {
-  groundingSupports,
-  hasUnknownSources,
-  mergeResearch,
-} from "../src/lib/research";
+import { hasUnknownSources, mergeResearch } from "../src/lib/research";
 import { advancePipeline, createCheckpoint } from "../src/lib/pipeline";
 import { examples } from "../src/lib/examples";
 it("긴 조사 자료는 거점별 공간을 배분하고 생략 사실을 남긴다", () => {
@@ -22,22 +18,7 @@ it("긴 조사 자료는 거점별 공간을 배분하고 생략 사실을 남�
   expect(merged.text.length).toBeLessThan(100000);
 });
 
-it("조사 문장과 원래 출처 인덱스의 연결을 유지하고 없는 출처는 제외한다", () => {
-  expect(
-    groundingSupports(
-      {
-        groundingSupports: [
-          {
-            segment: { text: "Supported claim" },
-            groundingChunkIndices: [0, 2, 2, 99],
-          },
-          { segment: { text: "No source" }, groundingChunkIndices: [1] },
-          { groundingChunkIndices: [0] },
-        ],
-      },
-      ["source-0", "source-2"],
-    ),
-  ).toEqual([{ text: "Supported claim", sourceIds: ["source-0", "source-2"] }]);
+it("조사 목록에 없는 출처를 탐지한다", () => {
   expect(
     hasUnknownSources([{ sourceIds: ["invented"] }], [{ id: "source-0" }]),
   ).toBe(true);

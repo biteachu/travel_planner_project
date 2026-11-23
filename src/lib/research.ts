@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { GroundingMetadata } from "@google/genai";
+
 import { sourceSchema } from "./trip";
 
 export const researchSchema = z.object({
@@ -17,25 +17,6 @@ export const researchSchema = z.object({
     .optional(),
 });
 
-export function groundingSupports(
-  metadata: GroundingMetadata | undefined,
-  sourceIds: string[],
-) {
-  const known = new Set(sourceIds);
-  return (metadata?.groundingSupports || [])
-    .slice(0, 100)
-    .flatMap((support) => {
-      const text = support.segment?.text?.slice(0, 5000);
-      const ids = [
-        ...new Set(
-          (support.groundingChunkIndices || [])
-            .map((index) => `source-${index}`)
-            .filter((id) => known.has(id)),
-        ),
-      ];
-      return text && ids.length ? [{ text, sourceIds: ids }] : [];
-    });
-}
 export function hasUnknownSources(
   items: { sourceIds: string[] }[],
   sources: { id: string }[],
