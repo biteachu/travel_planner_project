@@ -677,11 +677,13 @@ test("키 없이 예시를 편집·보관·다운로드하고 오프라인 열�
   context,
 }, testInfo) => {
   await page.goto("/");
+  await page.evaluate(() => document.fonts.ready);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "당신의 취향",
+    "당신답게",
   );
   await page.screenshot({
     path: `docs/process/current/home-${testInfo.project.name}.png`,
+    scale: "css",
     fullPage: true,
   });
   await page
@@ -739,6 +741,10 @@ test("키 없이 예시를 편집·보관·다운로드하고 오프라인 열�
   const offline = await context.newPage();
   await context.setOffline(true);
   await offline.setContent(html);
+  await offline.evaluate(() => document.fonts.ready);
+  expect(
+    await offline.evaluate(() => document.fonts.check('16px "Pretendard"')),
+  ).toBe(true);
   await expect(
     offline.getByRole("heading", { name: "나만의 산책", exact: true }),
   ).toBeVisible();
@@ -749,6 +755,7 @@ test("키 없이 예시를 편집·보관·다운로드하고 오프라인 열�
   ).toBe(true);
   await offline.screenshot({
     path: `docs/process/current/guidebook-${testInfo.project.name}.png`,
+    scale: "css",
     fullPage: true,
   });
   await offline

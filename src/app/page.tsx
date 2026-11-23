@@ -39,8 +39,13 @@ import {
   money,
   costSummary,
 } from "../lib/trip";
-import { downloadFile } from "../lib/export";
-import { ExportDialog } from "../components/ExportDialog";
+import { downloadFile } from "../lib/download";
+import dynamic from "next/dynamic";
+const ExportDialog = dynamic(
+  () =>
+    import("../components/ExportDialog").then((module) => module.ExportDialog),
+  { ssr: false },
+);
 import { ReservationsEditor } from "../components/ReservationsEditor";
 import { CostEditor } from "../components/CostEditor";
 import { DemoWalkthrough } from "../components/DemoWalkthrough";
@@ -795,13 +800,10 @@ export default function Home() {
           <>
             <section className="hero">
               <div className="hero-copy">
-                <p className="intro-line">
-                  <span />
-                  좋아하는 순간으로 채우는 여행
-                </p>
                 <h1>
-                  당신의 취향이
-                  <br />한 권의 여행이 되도록.
+                  떠나는 방식도,
+                  <br />
+                  <em>당신답게.</em>
                 </h1>
                 <p className="hero-description">
                   낯선 도시의 작은 골목부터 쉬어갈 카페까지.
@@ -845,12 +847,8 @@ export default function Home() {
                 className="hero-art"
                 aria-label="여행 가이드북 표지 미리보기"
               >
-                <div className="orbit orbit-one" />
-                <div className="orbit orbit-two" />
-                <div className="cover-note">어디든, 당신의 속도로.</div>
                 <button className="sample-book" onClick={() => openExample(0)}>
                   <span className="book-spine" />
-                  <span className="cover-brand">여행의 결 / 여행책 01</span>
                   <span className="cover-title">
                     바다 곁에서,
                     <br />
@@ -859,12 +857,7 @@ export default function Home() {
                   <span className="cover-sub">
                     도시의 일상과 섬의 풍경 사이
                   </span>
-                  <span className="cover-landscape">
-                    <span className="sun" />
-                    <span className="island island-one" />
-                    <span className="island island-two" />
-                    <span className="water-line" />
-                  </span>
+                  <span className="cover-rule" aria-hidden="true" />
                   <span className="cover-bottom">
                     Hiroshima & beyond <ArrowUpRight size={18} />
                   </span>
@@ -910,7 +903,6 @@ export default function Home() {
             <section className="examples-section" id="examples">
               <div className="section-heading">
                 <div>
-                  <p>먼저 펼쳐보는 여행</p>
                   <h2>이런 여행책을 만들 수 있어요</h2>
                 </div>
                 <span>키 없이 열어보는 예시</span>
@@ -931,7 +923,6 @@ export default function Home() {
                       <span className="example-name">
                         {i === 0 ? "Hiroshima" : "Türkiye"}
                       </span>
-                      <div className="horizon" />
                       <span className="example-days">
                         {e.days.length}일의 기록
                       </span>

@@ -33,6 +33,10 @@ for (const channel of ["chrome", "msedge"] as const) {
         if (/^https?:/.test(request.url())) remoteRequests.push(request.url());
       });
       await page.goto(pathToFileURL(file).href);
+      await page.evaluate(() => document.fonts.ready);
+      expect(
+        await page.evaluate(() => document.fonts.check('16px "Pretendard"')),
+      ).toBe(true);
       await expect(page.locator(".book-day")).toHaveCount(31);
       await expect(page.locator(".book-day").last()).toContainText(
         "2027-01-31",

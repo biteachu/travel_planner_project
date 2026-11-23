@@ -2,8 +2,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { Guidebook } from "../components/Guidebook";
 import { tripSchema, type Trip } from "./trip";
 import { guidebookCss } from "./guidebook-style";
+import { guidebookFont, guidebookFontLicense } from "./guidebook-font";
 import { defaultExportOptions, type ExportOptions } from "./export-options";
-export const guidebookTemplateVersion = "1";
+export const guidebookTemplateVersion = "2";
 export type GuidebookExport = {
   id: string;
   tripId: string;
@@ -43,6 +44,7 @@ export function createGuidebookExport(
   const metadata = renderToStaticMarkup(
     <>
       <meta name="travel-guidebook-export" content={JSON.stringify(record)} />
+      <meta name="font-license" content={guidebookFontLicense} />
     </>,
   );
   const title = trip.title.replace(
@@ -53,22 +55,18 @@ export function createGuidebookExport(
       ]!,
   );
   const html =
-    '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data:; base-uri \'none\'; form-action \'none\'"><title>' +
+    '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; font-src data:; img-src data:; base-uri \'none\'; form-action \'none\'"><title>' +
     title +
     "</title>" +
     metadata +
     "<style>" +
-    guidebookCss +
+    guidebookCss.replace(
+      "/design-preview/fonts/PretendardVariable.woff2",
+      guidebookFont,
+    ) +
     "</style></head><body>" +
     renderToStaticMarkup(<Guidebook trip={trip} options={included} />) +
     "</body></html>";
   return { ...record, html };
 }
-export function downloadFile(content: string, name: string, mime: string) {
-  const url = URL.createObjectURL(new Blob([content], { type: mime }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+export { downloadFile } from "./download";

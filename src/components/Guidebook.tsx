@@ -88,13 +88,15 @@ export function Guidebook({
     );
   };
   return (
-    <article className="guidebook" lang="ko">
+    <article
+      className={`guidebook${trip.bases.length > 1 ? " guidebook-multi" : ""}`}
+      lang="ko"
+    >
       <header className="book-cover">
-        <span className="book-series">여행의 결 · 나만의 여행책</span>
+        <h1>{trip.title}</h1>
         <p>
           {trip.brief.country} / {trip.brief.pace}
         </p>
-        <h1>{trip.title}</h1>
         <div className="book-cover-line" />
         {options.profile && <p>{trip.summary}</p>}
         <div className="book-meta">
@@ -124,7 +126,6 @@ export function Guidebook({
         <a href="#prepare">준비와 출처</a>
       </nav>
       <section id="overview">
-        <p className="section-kicker">여행의 큰 그림</p>
         <h2>어디에 머물고, 어떻게 여행할까요</h2>
         {(trip.brief.firstDayStart || trip.brief.lastDayEnd) && (
           <p>
@@ -172,7 +173,16 @@ export function Guidebook({
               <strong>{day.title}</strong>
             </span>
             <span className="details-mark" aria-hidden>
-              ＋
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              >
+                <path d="M5 12h14M12 5v14" />
+              </svg>
             </span>
           </summary>
           <div className="day-body">
@@ -248,7 +258,6 @@ export function Guidebook({
         </details>
       ))}
       <section id="dining">
-        <p className="section-kicker">입맛과 동선에 맞춰</p>
         <h2>식당 후보 비교하기</h2>
         <p>
           일정에 넣기 전 비교하는 후보입니다. 후보의 비용은 예산에 별도로 더하지
@@ -258,7 +267,6 @@ export function Guidebook({
       </section>
       {options.lodging && (
         <section id="stay">
-          <p className="section-kicker">머무는 시간도 여행</p>
           <h2>숙박 거점 고르기</h2>
           {trip.bases.map((b, i) => (
             <div className="stay-row" key={i}>
@@ -355,7 +363,6 @@ export function Guidebook({
       )}
       {trip.stories.length > 0 && (
         <section>
-          <p className="section-kicker">알고 보면 더 좋은 여행</p>
           <h2>여행의 뒷이야기</h2>
           {trip.stories.map((s, i) => (
             <div className="story" key={i}>
@@ -367,7 +374,6 @@ export function Guidebook({
         </section>
       )}
       <section id="prepare">
-        <p className="section-kicker">출발 전에 한 번 더</p>
         <h2>준비와 재확인</h2>
         <ul className="tips">
           {trip.tips.map((tip, i) => (
