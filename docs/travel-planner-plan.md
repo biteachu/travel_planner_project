@@ -271,7 +271,7 @@ Next.js 서버 Route Handler와 MediaWiki API를 사용합니다. 실제 작동�
 - 서버 공용 Anthropic 키로 대체하는 기능을 두지 않습니다.
 - `.env` 계열의 실제 비밀값은 Git 추적에서 제외하고 예시 파일에는 자리표시자만 둡니다.
 
-Google 공식 문서에서도 Claude API 인증에 키가 필요함을 확인했습니다. 실제 키 유형과 제한 설정은 연결 검증에 반영합니다. [Anthropic API 키 문서](https://ai.google.dev/gemini-api/docs/api-key)
+Anthropic 공식 문서에서 Console API 키를 이용한 Claude API 인증을 확인했습니다. 이 앱은 Anthropic 직접 API 키를 사용하며, 클라우드 제공사 인증이나 Workload Identity Federation을 지원한다는 뜻은 아닙니다. 실제 사용자 키의 접근 권한과 생성 성공은 별도로 검증합니다. [Anthropic API 인증 문서](https://platform.claude.com/docs/en/api/overview)
 
 로그인 전 여행 초안은 현재 브라우저에 보관하고, 이메일 로그인 후 사용자가 저장을 선택하면 DB로 옮깁니다. 다른 사용자의 여행을 읽거나 수정하지 못하도록 DB의 행 수준 보안 정책을 적용합니다. [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security)
 
