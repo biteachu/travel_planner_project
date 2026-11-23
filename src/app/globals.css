@@ -1269,7 +1269,9 @@ textarea::placeholder {
   color: #0754f8;
   flex-shrink: 0;
 }
-.key-connection-status p { margin: 8px 0; }
+.key-connection-status p {
+  margin: 8px 0;
+}
 .hero {
   max-width: 1320px;
   min-height: 690px;
@@ -1688,4 +1690,152 @@ input,
 select,
 textarea {
   font-size: 16px;
+}
+
+/* Worldwide destination introduction */
+.world-hero {
+  grid-template-columns: 1fr 1.15fr;
+  gap: 46px;
+  padding-top: 65px;
+  padding-bottom: 65px;
+}
+.world-hero h1 {
+  font-size: clamp(38px, 4.4vw, 64px);
+}
+.world-hero .hero-description {
+  max-width: 31ch;
+}
+.world-visual {
+  min-width: 0;
+}
+.world-mosaic {
+  display: grid;
+  grid-template-columns: 0.9fr 1fr;
+  grid-template-rows: 225px 225px;
+  gap: 14px;
+}
+.world-photo {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #142139;
+}
+.world-photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+.world-city {
+  grid-row: span 2;
+  border-radius: 70px 20px 20px 20px;
+}
+.world-photo figcaption {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 40px 20px 20px;
+  background: linear-gradient(transparent, #081521db);
+  color: white;
+}
+.world-photo small {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.world-photo strong {
+  font-size: 17px;
+}
+.world-caption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px;
+  margin: -12px 18px 0;
+  position: relative;
+  background: #ffffffdf;
+  backdrop-filter: blur(18px);
+  border: 1px solid #e4eaf5;
+  border-radius: 15px;
+  box-shadow: 0 12px 28px #1421390b;
+  font-weight: 700;
+}
+.world-caption svg {
+  color: #0754f8;
+  flex-shrink: 0;
+}
+.world-caption small {
+  display: block;
+  font-size: 12px;
+  color: #52627a;
+  font-weight: 400;
+  margin-top: 4px;
+}
+.photo-credits {
+  font-size: 11px;
+  color: #52627a;
+  margin: 12px 20px 0;
+}
+.photo-credits summary {
+  cursor: pointer;
+}
+.photo-credits p {
+  max-width: 65ch;
+}
+.photo-credits a {
+  color: inherit;
+  text-decoration: underline;
+}
+.example-scope {
+  font-size: 15px;
+  font-weight: 400;
+  color: #52627a;
+  line-height: 1.8;
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .world-photo:hover img {
+    transform: scale(1.045);
+  }
+}
+@media (max-width: 900px) {
+  .world-hero {
+    grid-template-columns: 1fr;
+    gap: 35px;
+    padding-top: 42px;
+    padding-bottom: 45px;
+  }
+  .world-hero .hero-description {
+    max-width: 45ch;
+  }
+  .world-mosaic {
+    grid-template-rows: 190px 190px;
+  }
+}
+@media (max-width: 480px) {
+  .world-mosaic {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 155px 155px;
+    gap: 10px;
+  }
+  .world-city {
+    border-top-left-radius: 42px;
+  }
+  .world-photo figcaption {
+    padding: 32px 12px 14px;
+  }
+  .world-photo strong {
+    font-size: 13px;
+  }
+  .world-photo small {
+    font-size: 10px;
+  }
+  .world-caption {
+    margin: -8px 8px 0;
+    padding: 14px;
+    font-size: 13px;
+  }
+  .world-caption small {
+    font-size: 10px;
+  }
 }

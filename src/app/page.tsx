@@ -813,17 +813,17 @@ export default function Home() {
         )}
         {view === "home" && (
           <>
-            <section className="hero">
+            <section className="hero world-hero">
               <div className="hero-copy">
                 <h1>
-                  떠나는 방식도,
+                  세계 어디로든,
                   <br />
-                  <em>당신답게.</em>
+                  나의 방식으로.
                 </h1>
                 <p className="hero-description">
-                  낯선 도시의 작은 골목부터 쉬어갈 카페까지.
+                  가고 싶은 나라와 도시, 좋아하는 여행의 모습을 알려주세요.
                   <br />
-                  여러 AI 에이전트가 함께 계획하고,
+                  여러 AI 에이전트가 취향과 동선을 함께 살펴,
                   <br />
                   나만을 위한 여행 가이드북으로 엮어 드립니다.
                 </p>
@@ -858,32 +858,87 @@ export default function Home() {
                   나의 API 키로, 나만의 계획을. 예시는 키 없이 열 수 있어요.
                 </p>
               </div>
-              <div
-                className="hero-art"
-                aria-label="여행 가이드북 표지 미리보기"
-              >
-                <button className="sample-book" onClick={() => openExample(0)}>
-                  <span className="book-spine" />
-                  <span className="cover-title">
-                    바다 곁에서,
-                    <br />
-                    히로시마
-                  </span>
-                  <span className="cover-sub">
-                    도시의 일상과 섬의 풍경 사이
-                  </span>
-                  <span className="cover-rule" aria-hidden="true" />
-                  <span className="cover-bottom">
-                    Hiroshima & beyond <ArrowUpRight size={18} />
-                  </span>
-                </button>
-                <div className="floating-tag">
-                  <BookOpen size={19} />
+              <div className="world-visual">
+                <div
+                  className="world-mosaic"
+                  aria-label="세계의 다양한 여행 풍경"
+                >
+                  <figure className="world-photo world-city">
+                    <img
+                      src="/travel-photos/tokyo.webp"
+                      alt="일본 도쿄의 거리 너머로 보이는 도쿄 타워"
+                      width={1000}
+                      height={1500}
+                      fetchPriority="high"
+                    />
+                    <figcaption>
+                      <small>도시의 리듬 속으로</small>
+                      <strong>도쿄, 일본</strong>
+                    </figcaption>
+                  </figure>
+                  <figure className="world-photo world-mountain">
+                    <img
+                      src="/travel-photos/dolomites.webp"
+                      alt="구름에 둘러싸인 이탈리아 돌로미티 산봉우리"
+                      width={1000}
+                      height={667}
+                    />
+                    <figcaption>
+                      <small>조금 더 멀리, 자연으로</small>
+                      <strong>돌로미티, 이탈리아</strong>
+                    </figcaption>
+                  </figure>
+                  <figure className="world-photo world-coast">
+                    <img
+                      src="/travel-photos/namibia.webp"
+                      alt="나미비아의 모래 언덕과 대서양 해안"
+                      width={1000}
+                      height={563}
+                    />
+                    <figcaption>
+                      <small>처음 마주하는 풍경</small>
+                      <strong>샌드위치 하버, 나미비아</strong>
+                    </figcaption>
+                  </figure>
+                </div>
+                <div className="world-caption">
+                  <BookOpen size={20} aria-hidden="true" />
                   <span>
-                    한 파일에 담긴 여행
-                    <small>HTML 다운로드 · 오프라인 열람</small>
+                    목적지는 자유롭게. 여행은 한 권으로.
+                    <small>나만의 일정 · HTML 가이드북 · 오프라인 열람</small>
                   </span>
                 </div>
+                <details className="photo-credits">
+                  <summary>사진 출처</summary>
+                  <p>
+                    Unsplash 사진:{" "}
+                    <a
+                      href="https://unsplash.com/photos/U23rKRn2PEY"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      도쿄 · Ryunosuke Kikuno
+                    </a>
+                    ,{" "}
+                    <a
+                      href="https://unsplash.com/photos/ZbNgY10MyO8"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      돌로미티 · Otis w
+                    </a>
+                    ,{" "}
+                    <a
+                      href="https://unsplash.com/photos/hJKRf9_KbhU"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      나미비아 · NIR HIMI
+                    </a>
+                    . 여행을 떠올리기 위한 사진이며 완성된 일정 예시는 아래에서
+                    볼 수 있습니다.
+                  </p>
+                </details>
               </div>
             </section>
             <section className="how">
@@ -918,7 +973,11 @@ export default function Home() {
             <section className="examples-section" id="examples">
               <div className="section-heading">
                 <div>
-                  <h2>이런 여행책을 만들 수 있어요</h2>
+                  <h2>완성된 여행책은 어떤 모습일까요?</h2>
+                  <p className="example-scope">
+                    아래 두 여행책은 기능을 둘러보는 체험용 예시입니다.
+                    <br />새 여행은 원하는 나라와 도시로 직접 만들 수 있어요.
+                  </p>
                 </div>
                 <span>키 없이 열어보는 예시</span>
               </div>
