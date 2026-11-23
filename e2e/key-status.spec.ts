@@ -23,6 +23,7 @@ test("키 확인 성공·관리·변경·실패·해제·새로고침 상태를 
     exact: true,
   });
   await expect(connected).toHaveClass(/key-connected/);
+  await expect(connected.locator("svg")).toBeVisible();
   await connected.click();
   await expect(page.getByRole("dialog")).toContainText(
     "다시 입력하실 필요가 없습니다",

@@ -1251,6 +1251,10 @@ textarea::placeholder {
   background: #0754f8;
   color: #fff;
 }
+.key-button.key-connected svg {
+  display: block;
+  flex-shrink: 0;
+}
 .key-connection-status {
   display: flex;
   align-items: flex-start;
