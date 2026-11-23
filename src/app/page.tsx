@@ -1707,7 +1707,8 @@ export default function Home() {
           <Dialog.Content className="modal">
             <Dialog.Title>나의 Claude API 키</Dialog.Title>
             <Dialog.Description>
-              입력한 키는 현재 화면의 메모리에만 보관합니다. AI 호출 시 앱
+              방문자마다 본인의 키를 입력합니다. 입력한 키는 다른 방문자와
+              공유되지 않으며 현재 화면의 메모리에만 보관합니다. AI 호출 시 앱
               서버를 거쳐 Anthropic에 전달하며, 새로고침하면 다시 입력해야
               합니다.
             </Dialog.Description>
