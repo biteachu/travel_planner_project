@@ -6,6 +6,15 @@ import {
 } from "../src/lib/export";
 import { examples } from "../src/lib/examples";
 import { defaultExportOptions } from "../src/lib/export-options";
+it("새 가이드북에 오프라인 글꼴·라이선스와 다중 거점 표지 스타일을 포함한다", () => {
+  const html = exportGuidebook(examples[1]);
+  expect(html).toContain("data:font/woff2;base64,");
+  expect(html).toContain("font-src data:");
+  expect(html).toContain('name="font-license"');
+  expect(html).toContain("SIL OPEN FONT LICENSE");
+  expect(html).toContain("guidebook-multi");
+  expect(html).not.toContain('url("/design-preview/');
+});
 it("출력 스냅샷은 여행 버전·시각·선택 항목을 보존하고 입력 원문을 포함하지 않는다", () => {
   const trip = structuredClone(examples[0]);
   trip.brief.reservations = "PRIVATE_RESERVATION_RAW";
