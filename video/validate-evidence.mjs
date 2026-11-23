@@ -1,13 +1,29 @@
 import { readFile, access } from "node:fs/promises";
 import { resolve, relative, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 const evidence = JSON.parse(
   await readFile(new URL("./evidence.json", import.meta.url), "utf8"),
 );
 const publicDir = fileURLToPath(new URL("./public/", import.meta.url));
 const issues = [];
+const promptLog = await readFile(
+  new URL("../docs/process/prompts.md", import.meta.url),
+  "utf8",
+);
 if (evidence.cases.length < 3) issues.push("비교 사례가 3개 이상 필요합니다.");
 for (const [i, item] of evidence.cases.entries()) {
+  if (!promptLog.includes(item.prompt) || !item.prompt.trim())
+    issues.push(`${i + 1}번: 지시 원문 기록에서 발췌를 찾지 못했습니다.`);
+  try {
+    if (!/^[a-f0-9]{7,40}$/.test(item.commit))
+      throw new Error("invalid commit");
+    execFileSync("git", ["cat-file", "-e", `${item.commit}^{commit}`], {
+      stdio: "pipe",
+    });
+  } catch {
+    issues.push(`${i + 1}번: 저장소의 실제 커밋 확인이 필요합니다.`);
+  }
   if (
     !item.verified ||
     !item.prompt.trim() ||
@@ -26,6 +42,9 @@ for (const [i, item] of evidence.cases.entries()) {
     }
     try {
       await access(path);
+      const source = new URL(`../docs/process/${item[key]}`, import.meta.url);
+      if (!(await readFile(path)).equals(await readFile(source)))
+        issues.push(`${i + 1}번 ${key}: 보존한 원본 화면과 파일이 다릅니다.`);
     } catch {
       issues.push(`${i + 1}번 ${key}: 이미지가 없습니다.`);
     }

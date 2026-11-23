@@ -1,6 +1,9 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
   AbsoluteFill,
+  delayRender,
+  continueRender,
+  cancelRender,
   Composition,
   Img,
   Sequence,
@@ -11,22 +14,22 @@ import {
 import evidence from "./evidence.json";
 
 const colors = {
-  paper: "#f6f4ed",
-  ink: "#233a36",
-  green: "#174e49",
-  sage: "#a8bfa4",
-  yellow: "#e6c771",
+  paper: "#ffffff",
+  ink: "#142139",
+  green: "#0754f8",
+  sage: "#172228",
+  yellow: "#ceff64",
 };
 const layout: CSSProperties = {
   background: colors.paper,
   color: colors.ink,
-  fontFamily: '"Malgun Gothic", "Noto Sans KR", sans-serif',
+  fontFamily: '"VideoFont", sans-serif',
   padding: 64,
 };
 const heading: CSSProperties = {
-  fontFamily: 'Batang, "Noto Serif KR", serif',
+  fontFamily: '"VideoFont", sans-serif',
   fontSize: 66,
-  fontWeight: 500,
+  fontWeight: 750,
   lineHeight: 1.35,
   margin: "22px 0",
   wordBreak: "keep-all",
@@ -39,8 +42,16 @@ function Frame({
   children: ReactNode;
   label?: string;
 }) {
+  const [fontHandle] = useState(() => delayRender("Load video font"));
+  useEffect(() => {
+    document.fonts
+      .load('500 20px "VideoFont"')
+      .then(() => continueRender(fontHandle))
+      .catch(cancelRender);
+  }, [fontHandle]);
   return (
     <AbsoluteFill style={layout}>
+      <style>{`@font-face{font-family:VideoFont;src:url("${staticFile("fonts/PretendardVariable.woff2")}") format("woff2");font-weight:100 900;font-display:block}`}</style>
       <div
         style={{
           display: "flex",
@@ -59,7 +70,7 @@ function Frame({
           left: 64,
           right: 64,
           bottom: 30,
-          borderTop: "1px solid #c8d5c5",
+          borderTop: "1px solid #d9e0eb",
           paddingTop: 14,
           display: "flex",
           justifyContent: "space-between",
@@ -94,9 +105,9 @@ function Book() {
         color: colors.paper,
         padding: "40px 36px",
         borderRadius: "3px 18px 18px 3px",
-        boxShadow: "20px 25px 0 #dce4d6",
+        boxShadow: "20px 25px 0 #d9e0eb",
         transform: `rotate(${interpolate(frame, [0, 180], [-8, -3], { extrapolateRight: "clamp" })}deg)`,
-        borderLeft: "12px solid #2c6861",
+        borderLeft: "12px solid #ffffff40",
       }}
     >
       <div style={{ fontSize: 16 }}>여행의 결 / 나만의 여행책</div>
@@ -138,9 +149,9 @@ function Screen({
         height: 470,
         overflow: "hidden",
         borderRadius: mobile ? 26 : 12,
-        border: "10px solid #233a36",
+        border: "10px solid #142139",
         background: colors.paper,
-        boxShadow: "0 16px 45px #233a3625",
+        boxShadow: "0 16px 45px #14213925",
       }}
     >
       <Img
@@ -233,7 +244,7 @@ export function Trailer() {
                       flex: 1,
                       padding: "30px 20px",
                       borderTop: `4px solid ${i % 2 ? colors.sage : colors.green}`,
-                      background: "#e8eee4",
+                      background: "#f3f5f9",
                     }}
                   >
                     <span style={{ fontSize: 16 }}>0{i + 1}</span>
@@ -288,10 +299,10 @@ export function Trailer() {
                 <br />한 권의 여행이 되도록.
               </h1>
               <p style={{ fontSize: 25, marginTop: 30 }}>
-                본인 Gemini API 키로 생성 · 키 없이 예시 체험
+                본인 Anthropic API 키로 생성 · 키 없이 예시 체험
               </p>
-              <p style={{ fontSize: 17, color: "#65776e" }}>
-                프로토타입 초안 / 실제 생성 품질과 공개 배포 검증 진행 중
+              <p style={{ fontSize: 17, color: "#526078" }}>
+                travel-planner-project-eight.vercel.app · 예시 화면으로 소개
               </p>
             </Enter>
           </div>
@@ -311,8 +322,8 @@ function Comparison({
   const ready =
     item.verified && item.before && item.after && item.prompt && item.reason;
   return (
-    <Frame label="과정 영상 편집 초안 · 제출본 아님">
-      <h1 style={{ ...heading, fontSize: 42, marginTop: 40 }}>
+    <Frame label="제작 과정 · 실제 디자인 수정 기록">
+      <h1 style={{ ...heading, fontSize: 36, marginTop: 24 }}>
         수정 사례 {index + 1} / {item.title}
       </h1>
       {ready ? (
@@ -321,19 +332,48 @@ function Comparison({
             {[item.before, item.after].map((src, i) => (
               <div key={src} style={{ flex: 1 }}>
                 <p>{i ? "내가 바꾼 것" : "AI가 처음 준 것"}</p>
-                <Img
-                  src={staticFile(src)}
-                  style={{ width: "100%", height: 270, objectFit: "contain" }}
-                />
+                <div
+                  style={{
+                    height: 225,
+                    overflow: "hidden",
+                    position: "relative",
+                    border: "1px solid #d9e0eb",
+                    borderRadius: 8,
+                  }}
+                >
+                  <Img
+                    src={staticFile(src)}
+                    style={
+                      index === 2
+                        ? {
+                            width: 1000,
+                            maxWidth: "none",
+                            position: "absolute",
+                            left: -440,
+                            top: -280,
+                          }
+                        : {
+                            width: "100%",
+                            height: 225,
+                            objectFit: "cover",
+                            objectPosition: "top",
+                          }
+                    }
+                  />
+                </div>
               </div>
             ))}
           </div>
-          <p style={{ fontSize: 20 }}>실제 지시: {item.prompt}</p>
-          <p style={{ fontSize: 20 }}>바꾼 이유: {item.reason}</p>
+          <p style={{ fontSize: 18, lineHeight: 1.65 }}>
+            실제 지시 발췌: {item.prompt}
+          </p>
+          <p style={{ fontSize: 18, lineHeight: 1.65 }}>
+            바꾼 이유: {item.reason}
+          </p>
           <small>관련 커밋: {item.commit}</small>
         </>
       ) : (
-        <div style={{ padding: 60, background: "#e8eee4", marginTop: 30 }}>
+        <div style={{ padding: 60, background: "#f3f5f9", marginTop: 30 }}>
           <h2 style={{ fontSize: 32 }}>
             실제 사용자 수정 자료를 등록할 자리입니다.
           </h2>
@@ -354,7 +394,7 @@ export function ProcessDraft() {
   return (
     <AbsoluteFill>
       <Sequence from={0} durationInFrames={600}>
-        <Frame label="과정 영상 편집 초안 · 제출본 아님">
+        <Frame label="제작 과정 · 실제 디자인 수정 기록">
           <h1 style={{ ...heading, marginTop: 90 }}>
             여행의 결<br />
             제작 과정
@@ -363,7 +403,7 @@ export function ProcessDraft() {
             취향을 입력하면 HTML 가이드북을 만드는 웹앱
           </p>
           <p style={{ fontSize: 22 }}>
-            이 영상은 실제 수정 증거를 채우기 위한 편집 틀입니다.
+            기본 화면 → 사용자 피드백 → 시안 선택 → 실제 수정.
           </p>
         </Frame>
       </Sequence>
@@ -373,17 +413,16 @@ export function ProcessDraft() {
         </Sequence>
       ))}
       <Sequence from={3750} durationInFrames={750}>
-        <Frame label="과정 영상 편집 초안 · 제출본 아님">
-          <h1 style={{ ...heading, marginTop: 80 }}>
-            마지막은 실제 사용 검증.
-          </h1>
+        <Frame label="제작 과정 · 실제 디자인 수정 기록">
+          <h1 style={{ ...heading, marginTop: 80 }}>구현한 것과 확인할 것.</h1>
           <p style={{ fontSize: 28, lineHeight: 2 }}>
-            모바일 화면 · 오류 상태 · HTML 오프라인 열람
+            확인: 공개 배포 · 모바일 · HTML 오프라인 열람
             <br />
-            개인 API 키 · 계정 저장 · 공개 배포
+            남은 검증: 본인 키의 실제 생성 · 이메일 로그인·계정 저장
           </p>
           <p style={{ fontSize: 23 }}>
-            제출 전 실제 수정 사례와 검증 결과로 이 장면을 갱신합니다.
+            기록은 새 커밋으로 보존합니다. 서로 다른 5일 작업 조건은 아직 진행
+            중입니다.
           </p>
         </Frame>
       </Sequence>

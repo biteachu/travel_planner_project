@@ -6,6 +6,7 @@ try {
   const page = await browser.newPage({
     viewport: { width: 1280, height: 900 },
     deviceScaleFactor: 1,
+    reducedMotion: "reduce",
   });
   await mkdir(new URL("./public/", import.meta.url), { recursive: true });
   await page.goto(process.env.CAPTURE_URL || "http://localhost:3000");

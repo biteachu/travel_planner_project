@@ -2,30 +2,30 @@
   "cases": [
     {
       "title": "표지·색상",
-      "before": "",
-      "after": "",
-      "prompt": "",
-      "reason": "",
-      "commit": "",
-      "verified": false
+      "before": "before/home-desktop.png",
+      "after": "after/home-desktop.png",
+      "prompt": "흰색과 쨍한 파란색 조합이라거나 좀 더 모던한 색상의 조합을 다양하게 적용해봐.",
+      "reason": "사용자가 누런 파스텔 톤을 원하지 않아 흰색·파랑을 선택하고, 잉크·라임으로 변화를 주었습니다.",
+      "commit": "879e294",
+      "verified": true
     },
     {
-      "title": "정보 구조",
-      "before": "",
-      "after": "",
-      "prompt": "",
-      "reason": "",
-      "commit": "",
-      "verified": false
+      "title": "글꼴과 제목",
+      "before": "before/guidebook-desktop.png",
+      "after": "after/guidebook-desktop.png",
+      "prompt": "일단 글씨체가 너무 기본 폰트라서 전혀 예쁘지 않아.",
+      "reason": "기본 글꼴과 바탕체를 Pretendard로 바꾸고, 제목·날짜·본문의 굵기와 크기를 정리했습니다.",
+      "commit": "879e294",
+      "verified": true
     },
     {
-      "title": "모바일 탐색",
-      "before": "",
-      "after": "",
-      "prompt": "",
-      "reason": "",
-      "commit": "",
-      "verified": false
+      "title": "유리 질감과 상호작용",
+      "before": "before/home-desktop.png",
+      "after": "after/home-desktop.png",
+      "prompt": "그리고 호버 기능이라거나 아이폰의 글래시한 느낌 등등이 적용되면 좋을 것 같아.",
+      "reason": "불투명한 탐색 도구를 반투명 유리 질감으로 바꾸고 버튼·책 표지의 호버 반응을 보완했습니다.",
+      "commit": "879e294",
+      "verified": true
     }
   ]
 }
