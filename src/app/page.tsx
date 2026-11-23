@@ -108,6 +108,8 @@ export default function Home() {
   const [day, setDay] = useState(0);
   const [key, setKey] = useState("");
   const [keyOpen, setKeyOpen] = useState(false);
+  const [keyVerified, setKeyVerified] = useState(false);
+  const [keyError, setKeyError] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
   const [busy, setBusy] = useState("");
@@ -744,9 +746,20 @@ export default function Home() {
         </button>
         <nav>
           <button onClick={() => navigate("library")}>내 여행책</button>
-          <button className="key-button" onClick={() => setKeyOpen(true)}>
-            <KeyRound size={16} />
-            {key ? "키 연결 설정" : "API 키 설정"}
+          <button
+            className={`key-button${keyVerified ? " key-connected" : ""}`}
+            onClick={() => setKeyOpen(true)}
+          >
+            {keyVerified ? (
+              <Check size={16} aria-hidden="true" />
+            ) : (
+              <KeyRound size={16} aria-hidden="true" />
+            )}
+            {keyVerified
+              ? "API 키 연결 완료"
+              : key
+                ? "API 키 확인 필요"
+                : "API 키 설정"}
           </button>
         </nav>
       </header>
@@ -1705,17 +1718,40 @@ export default function Home() {
               서버를 거쳐 Anthropic에 전달하며, 새로고침하면 다시 입력해야
               합니다.
             </Dialog.Description>
-            <label>
-              API 키
-              <input
-                type="password"
-                autoComplete="off"
-                spellCheck={false}
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                placeholder="본인의 Anthropic API 키"
-              />
-            </label>
+            {keyVerified ? (
+              <div className="key-connection-status" role="status">
+                <Check size={24} aria-hidden="true" />
+                <div>
+                  <strong>Claude API 연결 완료</strong>
+                  <p>
+                    현재 탭에서 이 키를 사용할 수 있습니다. 다시 입력하실 필요가
+                    없습니다.
+                  </p>
+                  <small>
+                    모델 접근을 확인한 상태이며, 실제 생성에는 사용량 한도 등이
+                    적용됩니다.
+                  </small>
+                </div>
+              </div>
+            ) : (
+              <label>
+                API 키
+                <input
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={key}
+                  disabled={!!busy}
+                  onChange={(e) => {
+                    setKey(e.target.value);
+                    setKeyVerified(false);
+                    setKeyError("");
+                  }}
+                  placeholder="본인의 Anthropic API 키"
+                />
+              </label>
+            )}
+            {keyError && <p role="alert">{keyError}</p>}
             <p className="quiet-note">
               사용 요금은 키 소유자의 Anthropic 계정에 청구됩니다. Claude 웹
               구독과 API 사용은 별도입니다. 공용 키는 제공하지 않습니다.
@@ -1730,33 +1766,58 @@ export default function Home() {
             <div className="modal-actions">
               <button
                 className="secondary"
+                disabled={!!busy}
                 onClick={() => {
                   setKey("");
+                  setKeyVerified(false);
+                  setKeyError("");
                   setNotice("API 키를 메모리에서 지웠습니다.");
                 }}
               >
-                키 지우기
+                {keyVerified ? "연결 해제" : "키 지우기"}
               </button>
-              <button
-                className="primary"
-                disabled={!key || !!busy}
-                onClick={async () => {
-                  setBusy("키 연결을 확인하고 있습니다");
-                  try {
-                    await callAgent("check", {});
-                    setNotice(
-                      "Claude 모델 접근을 확인했습니다. 실제 생성 결과는 별도로 확인해 주세요.",
-                    );
-                    setKeyOpen(false);
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : "연결 실패");
-                  } finally {
-                    setBusy("");
-                  }
-                }}
-              >
-                연결 확인
-              </button>
+              {keyVerified ? (
+                <button
+                  className="secondary"
+                  disabled={!!busy}
+                  onClick={() => {
+                    setKeyVerified(false);
+                    setKeyError("");
+                    setNotice("");
+                  }}
+                >
+                  키 변경
+                </button>
+              ) : (
+                <button
+                  className="primary"
+                  disabled={!key || !!busy}
+                  onClick={async () => {
+                    setBusy("키 연결을 확인하고 있습니다");
+                    setKeyError("");
+                    setNotice("");
+                    try {
+                      const result = await callAgent("check", {});
+                      if (result.connected !== true)
+                        throw new Error(
+                          "연결 상태를 확인하지 못했습니다. 다시 시도해 주세요.",
+                        );
+                      setKeyVerified(true);
+                      setNotice(
+                        "Claude 모델 접근을 확인했습니다. 실제 생성 결과는 별도로 확인해 주세요.",
+                      );
+                      setKeyOpen(false);
+                    } catch (e) {
+                      setKeyVerified(false);
+                      setKeyError(e instanceof Error ? e.message : "연결 실패");
+                    } finally {
+                      setBusy("");
+                    }
+                  }}
+                >
+                  연결 확인
+                </button>
+              )}
               <button className="secondary" onClick={() => setKeyOpen(false)}>
                 닫기
               </button>

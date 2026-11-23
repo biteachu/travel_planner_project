@@ -1247,6 +1247,25 @@ textarea::placeholder {
   background: #fff;
   color: #0754f8;
 }
+.key-button.key-connected {
+  background: #0754f8;
+  color: #fff;
+}
+.key-connection-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  margin: 20px 0;
+  border-radius: 16px;
+  background: #edf3ff;
+  color: #142139;
+}
+.key-connection-status > svg {
+  color: #0754f8;
+  flex-shrink: 0;
+}
+.key-connection-status p { margin: 8px 0; }
 .hero {
   max-width: 1320px;
   min-height: 690px;
