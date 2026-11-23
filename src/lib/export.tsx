@@ -4,6 +4,7 @@ import { tripSchema, type Trip } from "./trip";
 import { guidebookCss } from "./guidebook-style";
 import { guidebookFont, guidebookFontLicense } from "./guidebook-font";
 import { defaultExportOptions, type ExportOptions } from "./export-options";
+import { assertNoBookingReferences } from "./booking-privacy";
 export const guidebookTemplateVersion = "2";
 export type GuidebookExport = {
   id: string;
@@ -67,6 +68,7 @@ export function createGuidebookExport(
     "</style></head><body>" +
     renderToStaticMarkup(<Guidebook trip={trip} options={included} />) +
     "</body></html>";
+  assertNoBookingReferences(html);
   return { ...record, html };
 }
 export { downloadFile } from "./download";

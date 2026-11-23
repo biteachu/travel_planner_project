@@ -3,6 +3,10 @@ import { z } from "zod";
 import { runAgent, stageSchema } from "../../../lib/agents";
 import { readLimitedBody, RequestTooLarge } from "../../../lib/request-body";
 import {
+  assertNoBookingReferences,
+  BookingPrivacyError,
+} from "../../../lib/booking-privacy";
+import {
   acquireAgentPermit,
   LimiterUnavailable,
 } from "../../../lib/agent-limit";
@@ -25,6 +29,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await readLimitedBody(request);
     const parsed = input.parse(JSON.parse(body));
+    assertNoBookingReferences(parsed.payload);
     release = await acquireAgentPermit(parsed.key);
     if (!release)
       return NextResponse.json(
@@ -42,6 +47,8 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json(result, { headers });
   } catch (e) {
+    if (e instanceof BookingPrivacyError)
+      return NextResponse.json({ error: e.message }, { status: 400, headers });
     if (e instanceof LimiterUnavailable)
       return NextResponse.json(
         {

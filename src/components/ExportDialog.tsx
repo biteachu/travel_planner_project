@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { Trip } from "../lib/trip";
+import { BookingPrivacyError } from "../lib/booking-privacy";
 import { downloadFile, createGuidebookExport } from "../lib/export";
 import {
   defaultExportOptions,
@@ -31,11 +32,13 @@ export function ExportDialog({
   const output = useMemo(() => {
     try {
       return { ...createGuidebookExport(trip, options), error: "" };
-    } catch {
+    } catch (error) {
       return {
         html: "",
         error:
-          "입력 형식이 올바르지 않은 일정이 있습니다. 활동 이름·시간·금액을 확인해 주세요.",
+          error instanceof BookingPrivacyError
+            ? error.message
+            : "입력 형식이 올바르지 않은 일정이 있습니다. 활동 이름·시간·금액을 확인해 주세요.",
       };
     }
   }, [trip, options]);

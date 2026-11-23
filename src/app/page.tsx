@@ -40,6 +40,7 @@ import {
   costSummary,
 } from "../lib/trip";
 import { downloadFile } from "../lib/download";
+import { assertNoBookingReferences } from "../lib/booking-privacy";
 import dynamic from "next/dynamic";
 const ExportDialog = dynamic(
   () =>
@@ -280,6 +281,7 @@ export default function Home() {
     setCandidate(null);
   }
   async function callAgent(stage: string, payload: unknown) {
+    assertNoBookingReferences(payload);
     if (!key.trim()) {
       setKeyOpen(true);
       throw new Error("본인의 Anthropic API 키를 먼저 입력해 주세요.");
