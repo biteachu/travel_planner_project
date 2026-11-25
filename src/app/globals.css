@@ -1693,6 +1693,100 @@ textarea {
 }
 
 /* Worldwide destination introduction */
+.chatgpt-connection {
+  padding: 20px 0;
+  margin: 20px 0;
+  border-block: 1px solid #d9e0eb;
+}
+.chatgpt-connection h3 {
+  margin-top: 0;
+}
+.chatgpt-connection p {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.chatgpt-connection button,
+.chatgpt-connection select {
+  margin-block: 8px;
+}
+.chatgpt-connection details {
+  margin-block: 12px;
+}
+.chatgpt-connection details button {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.chatgpt-connection a {
+  display: inline-block;
+  margin-top: 8px;
+}
+.chatgpt-signin {
+  background: #171717;
+  color: #fff;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 10px;
+  min-height: 44px;
+}
+/* Animate.css fadeInUp / fadeIn ideas, tuned for the travel-photo composition.
+   Only the opening scene moves; ordinary reading and editing stay immediate. */
+@keyframes travel-photo-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes travel-copy-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .world-hero .world-photo {
+    animation: travel-photo-arrive 720ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .world-hero .world-mountain {
+    animation-delay: 110ms;
+  }
+  .world-hero .world-coast {
+    animation-delay: 220ms;
+  }
+  .world-hero .hero-copy h1,
+  .world-hero .hero-description,
+  .world-hero .hero-actions,
+  .world-hero .quiet-note,
+  .world-hero .world-caption {
+    animation: travel-copy-arrive 500ms ease-out backwards;
+  }
+  .world-hero .hero-description {
+    animation-delay: 80ms;
+  }
+  .world-hero .hero-actions {
+    animation-delay: 160ms;
+  }
+  .world-hero .quiet-note {
+    animation-delay: 200ms;
+  }
+  .world-hero .world-caption {
+    animation-delay: 280ms;
+  }
+  .world-hero .hero-actions:focus-within {
+    animation: none;
+  }
+}
+@media print {
+  .world-hero * {
+    animation: none !important;
+  }
+}
 .world-hero {
   grid-template-columns: 1fr 1.15fr;
   gap: 46px;

@@ -15,6 +15,8 @@
 
 ## 제출 상태
 
+추가 개선(2026-11-25): 사용자가 Animate.css의 페이드인 업을 요청하여 첫 화면 사진 등장 효과·동작 감소 대응을 추가했습니다. PC 전용 공식 ChatGPT 구독 로그인도 연결했으며 실제 로그인·모델 선택을 확인했습니다. [사용자 지시와 반영 기록](docs/process/motion-and-chatgpt.md)
+
 - [x] 공개 저장소 생성: https://github.com/biteachu/travel_planner_project
 - [x] 공개 배포 주소 및 키 없는 이용 흐름 검증: https://travel-planner-project-eight.vercel.app
 - [x] 이메일 로그인: 2026-11-23 사용자 성공 보고

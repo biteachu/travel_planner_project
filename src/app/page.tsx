@@ -50,6 +50,10 @@ const ExportDialog = dynamic(
 import { ReservationsEditor } from "../components/ReservationsEditor";
 import { CostEditor } from "../components/CostEditor";
 import { DemoWalkthrough } from "../components/DemoWalkthrough";
+import {
+  ChatGPTConnection,
+  type ChatGPTStatus,
+} from "../components/ChatGPTConnection";
 import { guidebookCss } from "../lib/guidebook-style";
 import { draftKey, readDraft, encodeDraft } from "../lib/draft";
 import { moveActivity } from "../lib/editing";
@@ -108,6 +112,10 @@ export default function Home() {
   const [day, setDay] = useState(0);
   const [key, setKey] = useState("");
   const [keyOpen, setKeyOpen] = useState(false);
+  const [chatGPT, setChatGPT] = useState<ChatGPTStatus>({
+    available: false,
+    connected: false,
+  });
   const [keyVerified, setKeyVerified] = useState(false);
   const [keyError, setKeyError] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
@@ -125,6 +133,25 @@ export default function Home() {
   const stopped = useRef(false);
   const controller = useRef<AbortController | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    fetch("/api/chatgpt/status")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.error) setChatGPT(data);
+        const result = new URLSearchParams(window.location.search).get(
+          "chatgpt",
+        );
+        if (result) {
+          setKeyOpen(true);
+          if (result === "failed")
+            setKeyError(
+              "ChatGPT 로그인을 완료하지 못했습니다. 다시 연결해 주세요.",
+            );
+          window.history.replaceState(null, "", window.location.pathname);
+        }
+      })
+      .catch(() => {});
+  }, []);
   useEffect(() => {
     try {
       const draft = readDraft(localStorage.getItem(draftKey));
@@ -282,21 +309,37 @@ export default function Home() {
     });
     setCandidate(null);
   }
-  async function callAgent(stage: string, payload: unknown) {
+  async function callAgent(
+    stage: string,
+    payload: unknown,
+    forceClaude = false,
+  ) {
     assertNoBookingReferences(payload);
-    if (!key.trim()) {
+    const useChatGPT = chatGPT.connected && !forceClaude;
+    if (useChatGPT && !chatGPT.model) {
+      setKeyOpen(true);
+      throw new Error("ChatGPT 구독으로 사용할 모델을 먼저 선택해 주세요.");
+    }
+    if (!useChatGPT && !key.trim()) {
       setKeyOpen(true);
       throw new Error("본인의 Anthropic API 키를 먼저 입력해 주세요.");
     }
     const ctrl = new AbortController();
     controller.current = ctrl;
     try {
-      const response = await fetch("/api/agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: key.trim(), stage, payload }),
-        signal: ctrl.signal,
-      });
+      const response = await fetch(
+        useChatGPT ? "/api/chatgpt/agent" : "/api/agent",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            useChatGPT
+              ? { stage, payload }
+              : { key: key.trim(), stage, payload },
+          ),
+          signal: ctrl.signal,
+        },
+      );
       const data = await response.json();
       // A completed response must not be applied after the user cancels it.
       ctrl.signal.throwIfAborted();
@@ -747,19 +790,21 @@ export default function Home() {
         <nav>
           <button onClick={() => navigate("library")}>내 여행책</button>
           <button
-            className={`key-button${keyVerified ? " key-connected" : ""}`}
+            className={`key-button${keyVerified || chatGPT.connected ? " key-connected" : ""}`}
             onClick={() => setKeyOpen(true)}
           >
-            {keyVerified ? (
+            {keyVerified || chatGPT.connected ? (
               <Check size={16} aria-hidden="true" />
             ) : (
               <KeyRound size={16} aria-hidden="true" />
             )}
-            {keyVerified
-              ? "API 키 연결 완료"
-              : key
-                ? "API 키 확인 필요"
-                : "API 키 설정"}
+            {chatGPT.connected
+              ? "ChatGPT 구독 연결됨"
+              : keyVerified
+                ? "API 키 연결 완료"
+                : key
+                  ? "API 키 확인 필요"
+                  : "API 키 설정"}
           </button>
         </nav>
       </header>
@@ -855,7 +900,9 @@ export default function Home() {
                 </div>
                 <p className="quiet-note">
                   <KeyRound size={14} />
-                  나의 API 키로, 나만의 계획을. 예시는 키 없이 열 수 있어요.
+                  {chatGPT.connected
+                    ? "ChatGPT 구독 사용 중 · 사용량은 ChatGPT 설정에서 관리해요."
+                    : "개인 API 키 또는 PC의 ChatGPT 구독으로. 예시는 키 없이 열 수 있어요."}
                 </p>
               </div>
               <div className="world-visual">
@@ -1770,13 +1817,28 @@ export default function Home() {
         <Dialog.Portal>
           <Dialog.Overlay className="modal-overlay" />
           <Dialog.Content className="modal">
-            <Dialog.Title>나의 Claude API 키</Dialog.Title>
+            <Dialog.Title>AI 연결 설정</Dialog.Title>
             <Dialog.Description>
-              방문자마다 본인의 키를 입력합니다. 입력한 키는 다른 방문자와
-              공유되지 않으며 현재 화면의 메모리에만 보관합니다. AI 호출 시 앱
-              서버를 거쳐 Anthropic에 전달하며, 새로고침하면 다시 입력해야
-              합니다.
+              여행 계획에 사용할 AI를 연결해 주세요. PC 로컬 실행에서는 ChatGPT
+              구독을, 공개 사이트에서는 개인 Claude API 키를 사용할 수 있습니다.
             </Dialog.Description>
+            <ChatGPTConnection
+              status={chatGPT}
+              onChange={setChatGPT}
+              disabled={!!busy}
+            />
+            {chatGPT.connected && (
+              <p className="notice-box">
+                여행 생성은 ChatGPT 구독을 사용합니다. Claude API로 만들려면
+                ChatGPT 연결을 먼저 해제해 주세요.
+              </p>
+            )}
+            <h3>나의 Claude API 키</h3>
+            <p>
+              키는 현재 탭의 메모리에만 보관하며 다른 방문자와 공유하지
+              않습니다. 호출 시 앱 서버를 거쳐 Anthropic에 전달하고,
+              새로고침하면 지워집니다.
+            </p>
             {keyVerified ? (
               <div className="key-connection-status" role="status">
                 <Check size={24} aria-hidden="true" />
@@ -1856,7 +1918,7 @@ export default function Home() {
                     setKeyError("");
                     setNotice("");
                     try {
-                      const result = await callAgent("check", {});
+                      const result = await callAgent("check", {}, true);
                       if (result.connected !== true)
                         throw new Error(
                           "연결 상태를 확인하지 못했습니다. 다시 시도해 주세요.",

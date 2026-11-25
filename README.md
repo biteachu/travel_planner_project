@@ -8,6 +8,8 @@
 
 ## 로컬 실행
 
+**ChatGPT 구독으로 시험하기(Windows):** `여행 플래너 PC 실행.cmd`를 더블클릭하거나 `npm run dev:local`을 실행하고 http://127.0.0.1:3417/ 에서 연결 설정을 엽니다. 공식 ChatGPT 로그인·구독 동의 후 모델을 선택하면 API 키 없이 생성할 수 있습니다. 구독 한도·크레딧 설정은 적용되며 유료 API로 자동 전환하지 않습니다. [실행 및 연결 안내](docs/chatgpt-local.md)
+
 ```sh
 npm ci
 npm run dev

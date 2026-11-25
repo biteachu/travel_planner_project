@@ -9,3 +9,4 @@ playwright-report/
 *.tsbuildinfo
 video/out/
 .impeccable/review/
+.local-chatgpt/
