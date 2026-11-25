@@ -20,6 +20,56 @@ const fixture = {
     ],
   },
 };
+it("동명 장소 안내 문서는 여행지 출처나 조사 본문으로 사용하지 않는다", async () => {
+  const ambiguous = structuredClone(fixture);
+  const page = {
+    ...ambiguous.query.pages[0],
+    pageprops: { disambiguation: "" },
+  };
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockResolvedValue(
+      new Response(JSON.stringify({ query: { pages: [page] } })),
+    );
+  const result = await researchWikivoyage(
+    ["Test city"],
+    new AbortController().signal,
+    fetcher,
+  );
+  expect(result.sources).toEqual([]);
+  expect(result.text).toContain("같은 이름의 여러 장소");
+  expect(result.text).not.toContain("Museum");
+  expect(
+    new URL(String(fetcher.mock.calls[0][0])).searchParams.get("ppprop"),
+  ).toBe("disambiguation");
+});
+it("네트워크·응답 형식·본문 한도 오류를 자료 조회 실패로 구분한다", async () => {
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockRejectedValueOnce(new TypeError("fetch failed"))
+    .mockResolvedValueOnce(new Response("not json"))
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify({ query: { pages: null } })),
+    )
+    .mockResolvedValueOnce(
+      new Response("large", { headers: { "content-length": "3000001" } }),
+    );
+  for (let i = 0; i < 4; i++)
+    await expect(
+      researchWikivoyage(["Test city"], new AbortController().signal, fetcher),
+    ).rejects.toThrow("OPEN_RESEARCH_UNAVAILABLE");
+});
+it("사용자가 취소한 조회를 자료 장애로 바꾸지 않는다", async () => {
+  const controller = new AbortController();
+  const reason = new Error("USER_CANCELLED");
+  const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => {
+    controller.abort(reason);
+    throw reason;
+  });
+  await expect(
+    researchWikivoyage(["Test city"], controller.signal, fetcher),
+  ).rejects.toBe(reason);
+});
 it.skipIf(process.env.RUN_LIVE_RESEARCH !== "1")(
   "실제 공개 API에서 세 여행지의 본문·라이선스·버전을 읽는다",
   async () => {
@@ -30,6 +80,12 @@ it.skipIf(process.env.RUN_LIVE_RESEARCH !== "1")(
     expect(result.sources).toHaveLength(3);
     expect(result.text).toContain("== Eat ==");
     expect(result.text).toContain("== Sleep ==");
+    const ambiguous = await researchWikivoyage(
+      ["Springfield"],
+      new AbortController().signal,
+    );
+    expect(ambiguous.sources).toEqual([]);
+    expect(ambiguous.text).toContain("같은 이름의 여러 장소");
     for (const source of result.sources) {
       expect(source.revision).toBeGreaterThan(0);
       expect(source.license).toBe("CC BY-SA 4.0");
