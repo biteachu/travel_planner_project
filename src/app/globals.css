@@ -1693,6 +1693,8 @@ textarea {
 }
 
 /* Worldwide destination introduction */
+.visual-editor{max-width:1000px;margin:0 auto 24px;padding:18px 24px;border:1px solid #d9e0eb;border-radius:14px;background:#fff}.visual-editor>summary{cursor:pointer;font-weight:700;min-height:28px}.visual-editor>summary span{font-weight:400;font-size:13px;color:#526078;margin-left:12px}.visual-editor p{font-size:13px;line-height:1.7}.visual-fields{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}.visual-fields label,.visual-search label{display:grid;gap:8px;font-size:13px}.visual-search{display:flex;gap:12px;align-items:end;margin:16px 0}.visual-search label{flex:1;min-width:0}.visual-search input,.visual-fields select{width:100%;min-height:44px}.place-candidates{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}.place-candidates>div{display:grid;align-content:start;gap:10px}.place-candidates img{width:100%;height:150px;object-fit:cover;border-radius:10px}.place-candidates a,.place-candidates small{font-size:12px}.route-map{height:320px;width:100%;border-radius:12px;margin-top:14px;z-index:0}.route-pin{display:grid;place-items:center;background:#0754f8;border:2px solid white;border-radius:50%;color:white;font-weight:700;box-shadow:0 3px 8px #14213930}.live-map-panel button{font-size:13px}.leaflet-container a{color:#0754f8}.leaflet-container{font-family:inherit}
+@media(max-width:600px){.visual-editor{padding:16px}.visual-editor>summary span{display:block;margin:5px 0 0}.visual-fields{grid-template-columns:1fr}.route-map{height:270px}}
 .chatgpt-connection {
   padding: 20px 0;
   margin: 20px 0;

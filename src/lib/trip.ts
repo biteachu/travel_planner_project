@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { visualsSchema } from "./guide-visuals";
 
 const text = z.string().max(5000);
 const optionalTime = z
@@ -265,6 +266,7 @@ export const recommendationSchema = z.object({
   sourceIds: z.array(z.string().max(200)).max(20),
 });
 export const tripSchema = z.object({
+  visuals: visualsSchema.optional(),
   id: z.string().min(1).max(100),
   version: z.number().int().positive(),
   title: z.string().min(1).max(300),

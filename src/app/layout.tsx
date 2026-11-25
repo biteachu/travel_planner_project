@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { InstallApp } from "../components/InstallApp";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 export const metadata: Metadata = {
   title: "여행의 결 | 나만의 여행 가이드북",
   description:

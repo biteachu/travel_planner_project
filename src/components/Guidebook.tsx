@@ -10,13 +10,22 @@ import {
   defaultExportOptions,
   type ExportOptions,
 } from "../lib/export-options";
+import type { ReactNode } from "react";
+import { compactText } from "../lib/guide-visuals";
+import { DayRoute } from "./DayRoute";
 
 export function Guidebook({
   trip,
   options = defaultExportOptions,
+  renderMap,
+  imageData = {},
+  offline = false,
 }: {
   trip: Trip;
   options?: ExportOptions;
+  renderMap?: (index: number) => ReactNode;
+  imageData?: Record<string, string>;
+  offline?: boolean;
 }) {
   const total = costSummary(trip);
   const sources = (ids: string[]) =>
@@ -53,7 +62,8 @@ export function Guidebook({
           </p>
           <h3>{item.name}</h3>
           {options.details && (
-            <>
+            <details className="reading-details">
+              <summary>추천 이유와 선택 전 확인</summary>
               <p>
                 <strong>추천 이유</strong> · {item.reason}
               </p>
@@ -65,7 +75,7 @@ export function Guidebook({
                   <strong>선택 전 확인</strong> · {item.checks.join(" / ")}
                 </p>
               )}
-            </>
+            </details>
           )}
           <p className="source-links">{sources(item.sourceIds)}</p>
           {!item.sourceIds.length && (
@@ -91,14 +101,53 @@ export function Guidebook({
     <article
       className={`guidebook${trip.bases.length > 1 ? " guidebook-multi" : ""}`}
       lang="ko"
+      id="book-top"
     >
+      {!!trip.visuals?.photos.length && (
+        <div className="book-photo-spread">
+          {trip.visuals.photos.slice(0, 3).map((photo) => (
+            <figure key={photo.city}>
+              {(!offline || imageData[photo.file]) && (
+                <img
+                  src={offline ? imageData[photo.file] : photo.url}
+                  alt={`${photo.city} · ${photo.title} 대표사진`}
+                  loading="eager"
+                />
+              )}
+              <figcaption>
+                <strong>{photo.city}</strong>
+                <span>{photo.title} · 도시 대표사진</span>
+                <details>
+                  <summary>사진 출처</summary>
+                  <a href={photo.sourceUrl} target="_blank" rel="noreferrer">
+                    {photo.credit} · {photo.license}
+                  </a>{" "}
+                  ·{" "}
+                  <a href={photo.licenseUrl} target="_blank" rel="noreferrer">
+                    이용 조건
+                  </a>
+                  <small>
+                    화면에 맞게 잘라 표시{offline ? " · 크기·압축 조정" : ""}
+                  </small>
+                </details>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
       <header className="book-cover">
         <h1>{trip.title}</h1>
         <p>
           {trip.brief.country} / {trip.brief.pace}
         </p>
         <div className="book-cover-line" />
-        {options.profile && <p>{trip.summary}</p>}
+        {options.profile && <p>{compactText(trip.summary, 170)}</p>}
+        {options.profile && trip.summary.length > 170 && (
+          <details className="cover-details">
+            <summary>여행 소개 더 읽기</summary>
+            <p>{trip.summary}</p>
+          </details>
+        )}
         <div className="book-meta">
           <span>
             {trip.brief.startDate} — {trip.brief.endDate}
@@ -126,7 +175,13 @@ export function Guidebook({
         <a href="#prepare">준비와 출처</a>
       </nav>
       <section id="overview">
-        <h2>어디에 머물고, 어떻게 여행할까요</h2>
+        <h2>이번 여행, 한눈에</h2>
+        <div className="trip-at-a-glance">
+          <strong>{trip.days.length}일의 여행</strong>
+          <span>
+            {trip.bases.map((b) => `${b.city} ${b.nights}박`).join(" → ")}
+          </span>
+        </div>
         {(trip.brief.firstDayStart || trip.brief.lastDayEnd) && (
           <p>
             활동 가능 시간 ·{" "}
@@ -147,19 +202,31 @@ export function Guidebook({
               <h3>
                 {b.city} <small>{b.nights}박</small>
               </h3>
-              {options.details && <p>{b.reason}</p>}
+              {options.details && (
+                <details className="reading-details">
+                  <summary>이 거점에 머무는 이유</summary>
+                  <p>{b.reason}</p>
+                </details>
+              )}
             </div>
           ))}
         </div>
         {trip.warnings.length > 0 && (
-          <aside className="notice">
-            <strong>여행 전에 확인해 주세요</strong>
+          <details className="notice warning-drawer">
+            <summary>
+              <strong>여행 전 확인 사항</strong>
+              <span>{trip.warnings.length}개 · 펼쳐서 확인</span>
+            </summary>
+            <p>
+              확인이 필요한 항목을 모두 보관했습니다. 예약·결제 전 관련 내용을
+              확인해 주세요.
+            </p>
             <ul>
               {trip.warnings.map((w, i) => (
                 <li key={i}>{w}</li>
               ))}
             </ul>
-          </aside>
+          </details>
         )}
       </section>
       {trip.days.map((day, i) => (
@@ -186,6 +253,12 @@ export function Guidebook({
             </span>
           </summary>
           <div className="day-body">
+            <DayRoute
+              trip={trip}
+              index={i}
+              lodging={options.lodging}
+              interactive={renderMap?.(i)}
+            />
             {day.activities.map((a) => (
               <div className="book-activity" key={a.id}>
                 <div className="time">
@@ -205,11 +278,20 @@ export function Guidebook({
                   {options.details &&
                     (options.lodging || a.kind !== "숙박") && (
                       <>
-                        <p>{a.description}</p>
-                        <p className="reason">{a.reason}</p>
+                        <p className="activity-summary">
+                          {compactText(a.description)}
+                        </p>
                         {a.transport && (
-                          <p className="transport">이동 · {a.transport}</p>
+                          <p className="transport">
+                            이동 · {compactText(a.transport, 85)}
+                          </p>
                         )}
+                        <details className="reading-details">
+                          <summary>장소 이야기·추천 이유·이동 자세히</summary>
+                          <p>{a.description}</p>
+                          <p className="reason">{a.reason}</p>
+                          {a.transport && <p>이동 · {a.transport}</p>}
+                        </details>
                       </>
                     )}
                   <div className="activity-links">
@@ -230,7 +312,14 @@ export function Guidebook({
                       </span>
                     )}
                   </div>
-                  <div className="sources-inline">{sources(a.sourceIds)}</div>
+                  {!!a.sourceIds.length && (
+                    <details className="source-drawer">
+                      <summary>참고 자료 {a.sourceIds.length}개</summary>
+                      <div className="sources-inline">
+                        {sources(a.sourceIds)}
+                      </div>
+                    </details>
+                  )}
                   {options.budget && a.conversion && (
                     <p className="fine-print">
                       환산:{" "}
@@ -365,90 +454,97 @@ export function Guidebook({
         <section>
           <h2>여행의 뒷이야기</h2>
           {trip.stories.map((s, i) => (
-            <div className="story" key={i}>
-              <h3>{s.title}</h3>
+            <details className="story reading-details" key={i}>
+              <summary>{s.title}</summary>
               <p>{s.body}</p>
               <div className="sources-inline">{sources(s.sourceIds)}</div>
-            </div>
+            </details>
           ))}
         </section>
       )}
       <section id="prepare">
         <h2>준비와 재확인</h2>
-        <ul className="tips">
-          {trip.tips.map((tip, i) => (
-            <li key={i}>{tip}</li>
-          ))}
-        </ul>
-        <h3>참고한 자료</h3>
-        {trip.sources.some((source) => source.license === "CC BY-SA 4.0") && (
-          <p className="fine-print">
-            Wikivoyage 기여자의 글을 한국어로 번역·요약하고 여행 조건에 맞게
-            재구성했습니다. 이 자료를 바탕으로 한 여행 안내 본문은{" "}
-            <a
-              href="https://creativecommons.org/licenses/by-sa/4.0/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              CC BY-SA 4.0
-            </a>
-            으로 제공합니다. 공유·변형 시 출처·기여자·라이선스·변경 표시를
-            유지하고 동일한 라이선스로 배포해 주세요. 개인 메모·예약정보를
-            공개하라는 의미는 아닙니다. 자료 조회일은 현재 영업·가격의 확인일이
-            아닙니다.
-          </p>
-        )}
-        {trip.sources.length ? (
-          trip.sources.map((s) => (
-            <p key={s.id}>
-              {safeUrl(s.url) ? (
-                <a href={safeUrl(s.url)} target="_blank" rel="noreferrer">
-                  {s.title}
-                </a>
-              ) : (
-                s.title
-              )}{" "}
-              <span translate="no" style={{ whiteSpace: "nowrap" }}>
-                {s.provider}
-              </span>{" "}
-              / 확인: {s.checkedAt}
-              {s.license && (
-                <>
-                  <br />
-                  Wikivoyage 기여자 ·{" "}
-                  <a
-                    href="https://creativecommons.org/licenses/by-sa/4.0/"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {s.license}
-                  </a>
-                  {s.attributionUrl && safeUrl(s.attributionUrl) && (
-                    <>
-                      {" "}
-                      ·{" "}
-                      <a
-                        href={safeUrl(s.attributionUrl)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        기여자·문서 이력
-                      </a>
-                    </>
-                  )}
-                  {s.revision && <> · 문서 버전 {s.revision}</>}
-                  {s.revisedAt && <> · 원문 수정 {s.revisedAt.slice(0, 10)}</>}
-                </>
-              )}
+        <details className="reading-details">
+          <summary>여행 준비 팁 {trip.tips.length}개</summary>
+          <ul className="tips">
+            {trip.tips.map((tip, i) => (
+              <li key={i}>{tip}</li>
+            ))}
+          </ul>
+        </details>
+        <details className="reading-details">
+          <summary>참고 자료와 이용 조건 · {trip.sources.length}개</summary>
+          {trip.sources.some((source) => source.license === "CC BY-SA 4.0") && (
+            <p className="fine-print">
+              Wikivoyage 기여자의 글을 한국어로 번역·요약하고 여행 조건에 맞게
+              재구성했습니다. 이 자료를 바탕으로 한 여행 안내 본문은{" "}
+              <a
+                href="https://creativecommons.org/licenses/by-sa/4.0/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                CC BY-SA 4.0
+              </a>
+              으로 제공합니다. 공유·변형 시 출처·기여자·라이선스·변경 표시를
+              유지하고 동일한 라이선스로 배포해 주세요. 개인 메모·예약정보를
+              공개하라는 의미는 아닙니다. 자료 조회일은 현재 영업·가격의
+              확인일이 아닙니다.
             </p>
-          ))
-        ) : (
-          <p>
-            {trip.isExample
-              ? "이 예시는 최신 여행 정보를 조사한 결과가 아닙니다."
-              : "연결된 출처가 없습니다. 장소와 이동 정보를 출발 전에 확인해 주세요."}
-          </p>
-        )}
+          )}
+          {trip.sources.length ? (
+            trip.sources.map((s) => (
+              <p key={s.id}>
+                {safeUrl(s.url) ? (
+                  <a href={safeUrl(s.url)} target="_blank" rel="noreferrer">
+                    {s.title}
+                  </a>
+                ) : (
+                  s.title
+                )}{" "}
+                <span translate="no" style={{ whiteSpace: "nowrap" }}>
+                  {s.provider}
+                </span>{" "}
+                / 확인: {s.checkedAt}
+                {s.license && (
+                  <>
+                    <br />
+                    Wikivoyage 기여자 ·{" "}
+                    <a
+                      href="https://creativecommons.org/licenses/by-sa/4.0/"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {s.license}
+                    </a>
+                    {s.attributionUrl && safeUrl(s.attributionUrl) && (
+                      <>
+                        {" "}
+                        ·{" "}
+                        <a
+                          href={safeUrl(s.attributionUrl)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          기여자·문서 이력
+                        </a>
+                      </>
+                    )}
+                    {s.revision && <> · 문서 버전 {s.revision}</>}
+                    {s.revisedAt && (
+                      <> · 원문 수정 {s.revisedAt.slice(0, 10)}</>
+                    )}
+                  </>
+                )}
+              </p>
+            ))
+          ) : (
+            <p>
+              {trip.isExample
+                ? "이 예시는 최신 여행 정보를 조사한 결과가 아닙니다."
+                : "연결된 출처가 없습니다. 장소와 이동 정보를 출발 전에 확인해 주세요."}
+            </p>
+          )}
+        </details>
         <p className="fine-print">
           외부 지도·출처 링크는 인터넷 연결이 필요합니다. 실제 영업·운행·예약
           가능 여부는 출발 전 확인해 주세요. 가이드북 버전 {trip.version} / 생성{" "}
@@ -458,6 +554,28 @@ export function Guidebook({
       <footer className="book-footer">
         여행의 결 <span>계획은 꼼꼼하게, 여행은 나답게.</span>
       </footer>
+      <a
+        className="back-to-top"
+        href="#book-top"
+        onClick={offline ? undefined : event => {
+          event.preventDefault();
+          window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+        }}
+        aria-label="가이드북 맨 위로 이동"
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
+          <path d="m6 13 6-6 6 6M12 7v14M5 3h14" />
+        </svg>
+        <span>맨 위로</span>
+      </a>
     </article>
   );
 }

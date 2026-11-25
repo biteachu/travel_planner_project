@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Guidebook } from "../components/Guidebook";
+import { GuideVisualEditor } from "../components/GuideVisualEditor";
+import { LiveDayMap } from "../components/LiveDayMap";
 import { examples } from "../lib/examples";
 import {
   briefSchema,
@@ -288,6 +290,14 @@ export default function Home() {
     setLibraryState(next);
   }
   function setTrip(next: Trip | null) {
+    if (
+      next &&
+      next.id === tripRef.current?.id &&
+      !next.visuals &&
+      tripRef.current.visuals
+    ) {
+      next = { ...next, visuals: tripRef.current.visuals };
+    }
     tripRef.current = next;
     revisionContext.current++;
     setCandidate(null);
@@ -336,6 +346,7 @@ export default function Home() {
             useChatGPT
               ? { stage, payload }
               : { key: key.trim(), stage, payload },
+            (name, value) => (name === "visuals" ? undefined : value),
           ),
           signal: ctrl.signal,
         },
@@ -1354,7 +1365,59 @@ export default function Home() {
               <span>{trip.isExample ? "키 없는 예시 체험" : trip.status}</span>
             </div>
             {tab === "guide" ? (
-              <Guidebook trip={trip} />
+              <>
+                <GuideVisualEditor
+                  key={trip.id}
+                  trip={trip}
+                  onChange={(update) => {
+                    const current = tripRef.current;
+                    if (!current || current.id !== trip.id) return;
+                    setTrip({
+                      ...current,
+                      visuals: update(
+                        current.visuals ?? { photos: [], places: [] },
+                      ),
+                    });
+                  }}
+                />
+                <Guidebook
+                  trip={trip}
+                  renderMap={(index) => (
+                    <LiveDayMap
+                      trip={trip}
+                      index={index}
+                      onPlaces={(places) => {
+                        const current = tripRef.current;
+                        if (
+                          !current ||
+                          current.id !== trip.id ||
+                          !places.length
+                        )
+                          return;
+                        const visuals = current.visuals ?? {
+                          photos: [],
+                          places: [],
+                        };
+                        setTrip({
+                          ...current,
+                          visuals: {
+                            ...visuals,
+                            places: [
+                              ...visuals.places.filter(
+                                (p) =>
+                                  !places.some(
+                                    (next) => next.activityId === p.activityId,
+                                  ),
+                              ),
+                              ...places,
+                            ].slice(0, 300),
+                          },
+                        });
+                      }}
+                    />
+                  )}
+                />
+              </>
             ) : (
               <div className="editor">
                 <aside>

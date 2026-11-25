@@ -5,7 +5,7 @@ import { guidebookCss } from "./guidebook-style";
 import { guidebookFont, guidebookFontLicense } from "./guidebook-font";
 import { defaultExportOptions, type ExportOptions } from "./export-options";
 import { assertNoBookingReferences } from "./booking-privacy";
-export const guidebookTemplateVersion = "2";
+export const guidebookTemplateVersion = "3";
 export type GuidebookExport = {
   id: string;
   tripId: string;
@@ -25,7 +25,15 @@ export function exportGuidebook(
 export function createGuidebookExport(
   input: Trip,
   options: ExportOptions = defaultExportOptions,
+  imageData: Record<string, string> = {},
 ): GuidebookExport {
+  const safeImages = Object.fromEntries(
+    Object.entries(imageData).filter(
+      ([, value]) =>
+        value.length <= 4000000 &&
+        /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value),
+    ),
+  );
   const trip = tripSchema.parse(input);
   const included = {
     profile: options.profile,
@@ -66,7 +74,14 @@ export function createGuidebookExport(
       guidebookFont,
     ) +
     "</style></head><body>" +
-    renderToStaticMarkup(<Guidebook trip={trip} options={included} />) +
+    renderToStaticMarkup(
+      <Guidebook
+        trip={trip}
+        options={included}
+        offline
+        imageData={safeImages}
+      />,
+    ) +
     "</body></html>";
   assertNoBookingReferences(html);
   return { ...record, html };

@@ -29,9 +29,40 @@ export function ExportDialog({
     ...defaultExportOptions,
   });
   const [reviewed, setReviewed] = useState(false);
+  const [imageData, setImageData] = useState<Record<string, string>>({});
+  const [preparing, setPreparing] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState("");
+  async function preparePhotos() {
+    setPreparing(true);
+    setReviewed(false);
+    const images: Record<string, string> = {};
+    for (const photo of (trip.visuals?.photos || []).slice(0, 3)) {
+      try {
+        const response = await fetch("/api/place-media", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: photo.title,
+            city: photo.city,
+            file: photo.file,
+          }),
+        });
+        const data = await response.json();
+        if (response.ok && typeof data.dataUrl === "string")
+          images[photo.file] = data.dataUrl;
+      } catch {
+        /* Text remains exportable when a photo source is unavailable. */
+      }
+    }
+    setImageData(images);
+    setPhotoStatus(
+      `사진 ${Object.keys(images).length}장 포함 준비 완료. 누락된 사진은 파일에 포함되지 않습니다.`,
+    );
+    setPreparing(false);
+  }
   const output = useMemo(() => {
     try {
-      return { ...createGuidebookExport(trip, options), error: "" };
+      return { ...createGuidebookExport(trip, options, imageData), error: "" };
     } catch (error) {
       return {
         html: "",
@@ -41,7 +72,7 @@ export function ExportDialog({
             : "입력 형식이 올바르지 않은 일정이 있습니다. 활동 이름·시간·금액을 확인해 주세요.",
       };
     }
-  }, [trip, options]);
+  }, [trip, options, imageData]);
   return (
     <Dialog.Root
       open
@@ -73,6 +104,23 @@ export function ExportDialog({
               </label>
             ))}
           </fieldset>
+          {!!trip.visuals?.photos.length && (
+            <div>
+              <button
+                className="secondary"
+                disabled={preparing}
+                onClick={preparePhotos}
+              >
+                {preparing
+                  ? "사진을 파일에 담는 중…"
+                  : "오프라인 사진 포함 준비"}
+              </button>
+              <p role="status">
+                {photoStatus ||
+                  "사진을 포함하려면 준비 버튼을 눌러 주세요. 지도는 방문 순서 그림과 온라인 길찾기 링크로 담깁니다."}
+              </p>
+            </div>
+          )}
           {trip.sources.some((source) => source.license === "CC BY-SA 4.0") && (
             <p className="quiet-note">
               공개 여행 자료를 번역·재구성한 안내 본문에는 CC BY-SA 4.0이
@@ -117,7 +165,7 @@ export function ExportDialog({
             </button>
             <button
               className="primary"
-              disabled={!reviewed || !!output.error}
+              disabled={preparing || !reviewed || !!output.error}
               onClick={() => {
                 downloadFile(
                   output.html,
