@@ -76,20 +76,6 @@ try {
           const capture = async name => { const file=`${name}-${device}.png`; await shot(page,join(folder,file));entry.files.push(file); };
           await page.locator('.hero').waitFor();
           await capture('home');
-          await page.getByRole('button',{name:'내 여행책 만들기',exact:true}).click();
-          await capture('form-destination');
-          await page.locator('.step-list button').nth(1).click();
-          await capture('form-preferences');
-          await page.locator('.step-list button').nth(2).click();
-          await capture('form-budget');
-          await page.goto('http://127.0.0.1:3117');
-          await page.locator('.example-card').first().click();
-          await page.getByRole('heading',{name:'바다 곁에서, 히로시마',exact:true}).waitFor();
-          await capture('guidebook');
-          await page.getByRole('button',{name:'일정 다듬기',exact:true}).click();
-          await capture('editor');
-          await page.locator('.key-button').click();
-          await capture('api-settings');
           await context.close();
         }
         await stop();
