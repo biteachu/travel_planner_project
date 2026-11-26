@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { findPlaces, commonsPhoto } from "../../../lib/place-media";
+import {
+  findPlaces,
+  commonsPhoto,
+  findRoutePlace,
+} from "../../../lib/place-media";
 import { readLimitedBody } from "../../../lib/request-body";
 import { assertNoBookingReferences } from "../../../lib/booking-privacy";
 export const runtime = "nodejs";
@@ -8,12 +12,15 @@ export const maxDuration = 120;
 export async function POST(request: NextRequest) {
   // Next's dev server may normalize nextUrl to localhost even when the
   // browser uses the fixed loopback host of the PC launcher.
-  const localOrigin = process.env.TRAVEL_LOCAL_CHATGPT === "1" && !process.env.VERCEL &&
+  const localOrigin =
+    process.env.TRAVEL_LOCAL_CHATGPT === "1" &&
+    !process.env.VERCEL &&
     request.headers.get("host") === "127.0.0.1:3417" &&
     request.headers.get("origin") === "http://127.0.0.1:3417";
   if (
     request.headers.get("origin") &&
-    request.headers.get("origin") !== request.nextUrl.origin && !localOrigin
+    request.headers.get("origin") !== request.nextUrl.origin &&
+    !localOrigin
   )
     return NextResponse.json(
       { error: "허용되지 않은 요청입니다." },
@@ -25,10 +32,19 @@ export async function POST(request: NextRequest) {
         query: z.string().trim().min(1).max(250),
         city: z.string().max(200),
         photos: z.boolean().optional(),
+        route: z.boolean().optional(),
         file: z.string().max(500).optional(),
       })
       .parse(JSON.parse(await readLimitedBody(request, 5000)));
     assertNoBookingReferences(input);
+    if (input.route && !input.file)
+      return NextResponse.json({
+        candidates: await findRoutePlace(
+          input.query,
+          input.city,
+          request.signal,
+        ),
+      });
     if (!input.file)
       return NextResponse.json({
         candidates: await findPlaces(

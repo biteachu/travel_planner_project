@@ -35,6 +35,12 @@ export function DayRoute({
         ))}
       </ol>
       {interactive ?? (points.length > 1 && <RouteSketch points={points} />)}
+      {points.some((p) => p.reference) && (
+        <p className="route-note">
+          주변 탐색 기준점이 포함되어 있습니다. 연결된 역 등의 위치이며
+          숙소·식당의 확정 주소가 아닙니다.
+        </p>
+      )}
       <div className="route-links">
         {links.map((link) => (
           <a key={link.url} href={link.url} target="_blank" rel="noreferrer">

@@ -103,3 +103,33 @@ test("사진·접힌 확인 사항·날짜별 지도·맨 위로를 제공한다
 
 
 
+
+test("문장형 일정에서 기준 장소와 미정 장소를 구분한다", async ({ page }) => {
+  const trip=structuredClone(examples[0]);
+  trip.title="문장형 일정 동선 검증";
+  const base=trip.days[0].activities[0];
+  trip.days[0].city="오사카";
+  trip.days[0].activities=[
+    {...base,id:"reference-hotel",title:"후쿠시마역 주변 숙소 체크인·휴식",kind:"숙박"},
+    {...base,id:"reference-walk",title:"후쿠시마역 고가에서 옆 골목으로",kind:"관광"},
+    {...base,id:"unresolved-meal",title:"동네 가게에서 도테야키로 저녁 시작",kind:"식사"}
+  ];
+  trip.visuals={photos,places:[]};
+  await page.addInitScript(t=>localStorage.setItem("travel-books-v1",JSON.stringify([t])),trip);
+  await page.route("**/api/place-media",async route=>{
+    const body=route.request().postDataJSON();
+    if (!body.route) { await route.fulfill({json:{candidates:[]}}); return; }
+    expect(body.query).not.toMatch(/^오사카 /);
+    await route.fulfill({json:{candidates:body.query.includes("후쿠시마역")?[{title:"후쿠시마역 (한신 전기철도)",lat:34.69611111,lon:135.48833333,sourceUrl:"https://ko.wikipedia.org/wiki/Test"}]:[]}});
+  });
+  await page.goto("/");
+  await page.getByRole("button",{name:"내 여행책",exact:true}).click();
+  await page.getByRole("button",{name:new RegExp(trip.title+" ")}).filter({hasNotText:"삭제"}).first().click();
+  await page.getByRole("button",{name:"지도에서 동선 보기"}).first().click();
+  await expect(page.locator(".leaflet-container")).toBeVisible();
+  await expect(page.locator(".leaflet-marker-icon")).toHaveCount(1);
+  await expect(page.locator(".leaflet-marker-icon")).toContainText("1·2");
+  await expect(page.getByText(/위치 미정: 동네 가게에서/)).toBeVisible();
+  await expect(page.getByText(/2개 일정의 기준 장소/)).toBeVisible();
+});
+

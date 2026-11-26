@@ -22,14 +22,20 @@ export default function RouteMap({
       weight: 3,
       dashArray: "6 8",
     }).addTo(map);
+    const groups = new Map<string, typeof points>();
     points.forEach((p) => {
+      const key = `${p.lat},${p.lon}`;
+      groups.set(key, [...(groups.get(key) || []), p]);
+    });
+    groups.forEach((group) => {
+      const p = group[0];
       const label = document.createElement("span");
-      label.textContent = `${p.number}. ${p.title}`;
+      label.textContent = `${group.map((item) => item.number).join("·")}번. ${p.title}${group.some((item) => item.reference) ? " · 주변 탐색 기준점 (숙소·식당 위치 아님)" : ""}`;
       L.marker([p.lat, p.lon], {
         icon: L.divIcon({
           className: "route-pin",
-          html: String(p.number),
-          iconSize: [30, 30],
+          html: group.map((item) => item.number).join("·"),
+          iconSize: [Math.max(30, group.length * 20), 30],
         }),
       })
         .addTo(map)

@@ -1,5 +1,41 @@
 import { photoSchema, placeSchema, type PlaceCandidate } from "./guide-visuals";
 import { readLimitedBody } from "./request-body";
+import {
+  placeName,
+  routeCities,
+  routeSearchTerm,
+  routeCandidate,
+} from "./route-location";
+
+export async function findRoutePlace(
+  title: string,
+  city: string,
+  signal?: AbortSignal,
+) {
+  const cities = routeCities(city);
+  const centers: PlaceCandidate[] = [];
+  const candidates: PlaceCandidate[] = [];
+  for (const name of cities) {
+    const matches = await findPlaces(name, name, signal, false);
+    const center = matches.find(
+      (p) =>
+        placeName(p.title).replace(/시$/, "") ===
+        placeName(name).replace(/시$/, ""),
+    );
+    if (!center) continue;
+    centers.push(center);
+    candidates.push(
+      ...(await findPlaces(
+        `${name} ${routeSearchTerm(title)}`,
+        name,
+        signal,
+        false,
+      )),
+    );
+  }
+  const match = routeCandidate(title, candidates, centers);
+  return match ? [match] : [];
+}
 const headers = {
   "User-Agent":
     "TravelPlannerProject/0.2 (https://github.com/biteachu/travel_planner_project)",
@@ -118,12 +154,14 @@ export async function findPlaces(
         page.title,
         signal,
       ).catch(() => undefined);
-    const candidate = placeSchema.omit({ activityId: true, activityTitle: true, city: true }).safeParse({
-      title: page.title,
-      lat: c.lat,
-      lon: c.lon,
-      sourceUrl: page.fullurl,
-    });
+    const candidate = placeSchema
+      .omit({ activityId: true, activityTitle: true, city: true })
+      .safeParse({
+        title: page.title,
+        lat: c.lat,
+        lon: c.lon,
+        sourceUrl: page.fullurl,
+      });
     if (candidate.success) candidates.push({ ...candidate.data, photo });
   }
   return candidates;

@@ -42,6 +42,7 @@ export const photoSchema = z.object({
     }),
 });
 export const placeSchema = z.object({
+  reference: z.boolean().optional(),
   activityId: z.string().max(100),
   activityTitle: z.string().max(300),
   city: z.string().max(200),
