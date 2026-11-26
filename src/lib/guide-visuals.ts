@@ -12,6 +12,8 @@ const wikiUrl = z
     );
   });
 export const photoSchema = z.object({
+  activityId: z.string().max(100).optional(),
+  activityTitle: z.string().max(300).optional(),
   city: z.string().max(200),
   title: z.string().max(300),
   file: z.string().max(500),
@@ -52,7 +54,7 @@ export const placeSchema = z.object({
   sourceUrl: wikiUrl,
 });
 export const visualsSchema = z.object({
-  photos: z.array(photoSchema).max(15),
+  photos: z.array(photoSchema).max(120),
   places: z.array(placeSchema).max(300),
 });
 export type GuidePhoto = z.infer<typeof photoSchema>;
@@ -65,6 +67,19 @@ export type PlaceCandidate = {
   sourceUrl: string;
   photo?: GuidePhoto;
 };
+export function activityPhoto(
+  trip: Trip,
+  activityId: string,
+  title: string,
+  city: string,
+) {
+  return trip.visuals?.photos.find(
+    (p) =>
+      p.activityId === activityId &&
+      p.activityTitle === title &&
+      p.city === city,
+  );
+}
 export function dayPlaces(trip: Trip, index: number, lodging = true) {
   const day = trip.days[index];
   return day.activities.flatMap((a, i) => {

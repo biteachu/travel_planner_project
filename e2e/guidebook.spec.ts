@@ -282,17 +282,21 @@ test("식당·숙박 후보의 비교 정보와 출처를 모바일에서도 읽
   await page.goto("/");
   await page.getByRole("button", { name: "내 여행책", exact: true }).click();
   await page.getByRole("button", { name: /후보 비교 테스트.*버전/ }).click();
-  await page.getByRole("link", { name: "먹을 곳", exact: true }).click();
+  await page.getByRole("tab", { name: "맛집·술집", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "식당 테스트 후보", exact: true }),
   ).toBeVisible();
   await expect(
     page.locator("#dining").getByRole("link", { name: "테스트 근거" }),
   ).toHaveAttribute("href", "https://example.com/evidence");
-  await page.getByRole("link", { name: "머무를 곳", exact: true }).click();
+  await page.getByRole("tab", { name: "여행 준비", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "숙박 지역 테스트 후보", exact: true }),
   ).toBeVisible();
+  await page
+    .locator("#prepare summary")
+    .filter({ hasText: "참고 자료와 이용 조건" })
+    .click();
   await expect(
     page.locator("#prepare").getByRole("link", { name: "기여자·문서 이력" }),
   ).toHaveAttribute("href", /action=history/);
@@ -515,6 +519,7 @@ test("수동 환율로 비용을 계산하고 직접 수정하면 환산 기록�
   );
   await page.getByRole("button", { name: "가이드북", exact: true }).click();
   await expect(page.getByText(/환산:.*테스트용 환율/)).toBeVisible();
+  await page.getByRole("tab", { name: "여행 준비", exact: true }).click();
   await expect(page.getByText(/현재 계산된 잔여 예산/)).toBeVisible();
   await page.getByRole("button", { name: "일정 다듬기", exact: true }).click();
   await page.getByLabel("활동 1 비용", { exact: true }).fill("2000");
@@ -679,10 +684,10 @@ test("키 없이 예시를 편집·보관·다운로드하고 오프라인 열�
   await page.goto("/");
   await page.evaluate(() => document.fonts.ready);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "당신답게",
+    "나의 방식으로",
   );
   await page.screenshot({
-    path: `docs/process/current/home-${testInfo.project.name}.png`,
+    path: testInfo.outputPath("home.png"),
     scale: "css",
     fullPage: true,
   });
@@ -754,7 +759,7 @@ test("키 없이 예시를 편집·보관·다운로드하고 오프라인 열�
     ),
   ).toBe(true);
   await offline.screenshot({
-    path: `docs/process/current/guidebook-${testInfo.project.name}.png`,
+    path: testInfo.outputPath("guidebook.png"),
     scale: "css",
     fullPage: true,
   });

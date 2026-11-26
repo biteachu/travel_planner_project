@@ -39,7 +39,8 @@ export function GuideVisualEditor({
     const cities = [...new Set(trip.days.map((d) => d.city))].slice(0, 6);
     void (async () => {
       for (const city of cities) {
-        if (trip.visuals?.photos.some((p) => p.city === city)) continue;
+        if (trip.visuals?.photos.some((p) => !p.activityId && p.city === city))
+          continue;
         try {
           const found = await lookup(city, city, ctrl.signal);
           if (ctrl.signal.aborted) return;
@@ -48,7 +49,7 @@ export function GuideVisualEditor({
           );
           if (match?.photo)
             onChange((previous) =>
-              previous.photos.some((p) => p.city === city)
+              previous.photos.some((p) => !p.activityId && p.city === city)
                 ? previous
                 : { ...previous, photos: [...previous.photos, match.photo!] },
             );
@@ -69,9 +70,18 @@ export function GuideVisualEditor({
     onChange((previous) => ({
       photos: candidate.photo
         ? [
-            ...previous.photos.filter((p) => p.city !== day.city),
-            candidate.photo,
-          ].slice(0, 15)
+            ...previous.photos.filter((p) =>
+              activity
+                ? p.activityId !== activity.id
+                : p.activityId || p.city !== day.city,
+            ),
+            {
+              ...candidate.photo,
+              ...(activity
+                ? { activityId: activity.id, activityTitle: activity.title }
+                : {}),
+            },
+          ].slice(0, 120)
         : previous.photos,
       places: activity
         ? [
@@ -156,11 +166,12 @@ export function GuideVisualEditor({
   return (
     <details className="visual-editor">
       <summary>
-        사진·지도 보완 <span>도시 대표사진과 장소 위치를 확인하세요</span>
+        사진·지도 보완 <span>장소별 사진과 위치를 확인하세요</span>
       </summary>
       <p>
-        사진은 도시 대표 이미지이며 개별 방문 장소의 사진과 다를 수 있습니다.
-        검색에는 선택한 도시·장소명만 전송합니다.
+        도시 대표사진 또는 개별 일정을 선택해 사진을 연결할 수 있습니다. 검색
+        결과의 장소가 실제 방문지와 같은지 확인해 주세요. 검색에는 도시·장소명만
+        전송합니다.
       </p>
       <div className="visual-fields">
         <label>
@@ -224,6 +235,23 @@ export function GuideVisualEditor({
           검색
         </button>
       </div>
+      {target && trip.visuals?.photos.some((p) => p.activityId === target) && (
+        <button
+          className="text-button"
+          disabled={busy}
+          onClick={() => {
+            onChange((previous) => ({
+              ...previous,
+              photos: previous.photos.filter((p) => p.activityId !== target),
+            }));
+            setMessage(
+              "선택한 일정의 사진 연결을 해제했습니다. 보관을 누르면 저장됩니다.",
+            );
+          }}
+        >
+          선택한 일정의 사진 제거
+        </button>
+      )}
       {message && <p role="status">{message}</p>}
       <div className="place-candidates">
         {candidates.map((candidate) => (

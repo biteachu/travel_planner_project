@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
           input.query,
           input.city,
           request.signal,
+          input.photos,
         ),
       });
     if (!input.file)

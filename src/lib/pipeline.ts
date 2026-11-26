@@ -13,6 +13,7 @@ import {
 } from "./trip";
 
 import { researchSchema, hasUnknownSources, mergeResearch } from "./research";
+import { guideContentIssues } from "./guide-content";
 export const checkpointSchema = z.object({
   brief: briefSchema,
   outline: outlineSchema,
@@ -195,6 +196,8 @@ export async function advancePipeline(
       })
       .parse(response);
     const next = parsed.result;
+    if (guideContentIssues(next).length)
+      throw new Error(guideContentIssues(next).join(" "));
     if (
       hasUnknownSources(
         [...next.stories, ...(next.recommendations || [])],

@@ -5,7 +5,7 @@ import { guidebookCss } from "./guidebook-style";
 import { guidebookFont, guidebookFontLicense } from "./guidebook-font";
 import { defaultExportOptions, type ExportOptions } from "./export-options";
 import { assertNoBookingReferences } from "./booking-privacy";
-export const guidebookTemplateVersion = "3";
+export const guidebookTemplateVersion = "4";
 export type GuidebookExport = {
   id: string;
   tripId: string;

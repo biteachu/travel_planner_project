@@ -36,7 +36,23 @@ export function ExportDialog({
     setPreparing(true);
     setReviewed(false);
     const images: Record<string, string> = {};
-    for (const photo of (trip.visuals?.photos || []).slice(0, 3)) {
+    const eligible = (trip.visuals?.photos || []).filter(
+      (photo) =>
+        !photo.activityId ||
+        trip.days.some((day) =>
+          day.activities.some(
+            (a) =>
+              a.id === photo.activityId &&
+              a.title === photo.activityTitle &&
+              day.city === photo.city &&
+              (options.lodging || a.kind !== "숙박"),
+          ),
+        ),
+    );
+    for (const photo of eligible.filter(
+      (p, i, all) => all.findIndex((other) => other.file === p.file) === i,
+    )) {
+      setPhotoStatus(`사진 ${Object.keys(images).length}장 준비 중…`);
       try {
         const response = await fetch("/api/place-media", {
           method: "POST",

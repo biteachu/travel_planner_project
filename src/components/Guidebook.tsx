@@ -11,8 +11,9 @@ import {
   type ExportOptions,
 } from "../lib/export-options";
 import type { ReactNode } from "react";
-import { compactText } from "../lib/guide-visuals";
+import { compactText, activityPhoto } from "../lib/guide-visuals";
 import { DayRoute } from "./DayRoute";
+import { GuidePhoto } from "./GuidePhoto";
 
 export function Guidebook({
   trip,
@@ -20,12 +21,14 @@ export function Guidebook({
   renderMap,
   imageData = {},
   offline = false,
+  section = "all",
 }: {
   trip: Trip;
   options?: ExportOptions;
   renderMap?: (index: number) => ReactNode;
   imageData?: Record<string, string>;
   offline?: boolean;
+  section?: "all" | "itinerary" | "places" | "dining" | "practical";
 }) {
   const total = costSummary(trip);
   const sources = (ids: string[]) =>
@@ -56,11 +59,43 @@ export function Guidebook({
     );
     return items.length ? (
       items.map((item, index) => (
-        <div className="stay-row" key={`${item.city}-${item.name}-${index}`}>
+        <div
+          className={kind === "식당" ? "dining-card" : "stay-row"}
+          key={`${item.city}-${item.name}-${index}`}
+        >
           <p className="section-kicker">
-            {item.city} · {item.kind} 후보 · 예약 미확정
+            {item.city} · {item.category || item.kind} · 후보 {index + 1} · 예약
+            미확정
           </p>
           <h3>{item.name}</h3>
+          {options.details && kind === "식당" && (
+            <>
+              <p className="dining-specialty">
+                {item.specialty || compactText(item.reason, 180)}
+              </p>
+              {item.atmosphere && (
+                <p>
+                  <strong>분위기</strong> · {item.atmosphere}
+                </p>
+              )}
+              <h4>맛볼 메뉴</h4>
+              {item.menu?.length ? (
+                <ul className="menu-list">
+                  {item.menu.map((menu, i) => (
+                    <li key={i}>
+                      <strong>{menu.name}</strong>
+                      <span>{menu.description}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="fine-print">
+                  이 가게의 메뉴 근거가 아직 부족합니다. 공식 메뉴를 확인해
+                  주세요.
+                </p>
+              )}
+            </>
+          )}
           {options.details && (
             <details className="reading-details">
               <summary>추천 이유와 선택 전 확인</summary>
@@ -102,39 +137,53 @@ export function Guidebook({
       className={`guidebook${trip.bases.length > 1 ? " guidebook-multi" : ""}`}
       lang="ko"
       id="book-top"
+      data-section={section}
     >
-      {!!trip.visuals?.photos.length && (
-        <div className="book-photo-spread">
-          {trip.visuals.photos.slice(0, 3).map((photo) => (
-            <figure key={photo.city}>
-              {(!offline || imageData[photo.file]) && (
-                <img
-                  src={offline ? imageData[photo.file] : photo.url}
-                  alt={`${photo.city} · ${photo.title} 대표사진`}
-                  loading="eager"
-                />
-              )}
-              <figcaption>
-                <strong>{photo.city}</strong>
-                <span>{photo.title} · 도시 대표사진</span>
-                <details>
-                  <summary>사진 출처</summary>
-                  <a href={photo.sourceUrl} target="_blank" rel="noreferrer">
-                    {photo.credit} · {photo.license}
-                  </a>{" "}
-                  ·{" "}
-                  <a href={photo.licenseUrl} target="_blank" rel="noreferrer">
-                    이용 조건
-                  </a>
-                  <small>
-                    화면에 맞게 잘라 표시{offline ? " · 크기·압축 조정" : ""}
-                  </small>
-                </details>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      )}
+      {!!trip.visuals?.photos.some((p) => !p.activityId) &&
+        (section === "all" || section === "itinerary") && (
+          <div className="book-photo-spread">
+            {trip
+              .visuals!.photos.filter((p) => !p.activityId)
+              .slice(0, 3)
+              .map((photo) => (
+                <figure key={photo.city}>
+                  {(!offline || imageData[photo.file]) && (
+                    <img
+                      src={offline ? imageData[photo.file] : photo.url}
+                      alt={`${photo.city} · ${photo.title} 대표사진`}
+                      loading="eager"
+                    />
+                  )}
+                  <figcaption>
+                    <strong>{photo.city}</strong>
+                    <span>{photo.title} · 도시 대표사진</span>
+                    <details>
+                      <summary>사진 출처</summary>
+                      <a
+                        href={photo.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {photo.credit} · {photo.license}
+                      </a>{" "}
+                      ·{" "}
+                      <a
+                        href={photo.licenseUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        이용 조건
+                      </a>
+                      <small>
+                        화면에 맞게 잘라 표시
+                        {offline ? " · 크기·압축 조정" : ""}
+                      </small>
+                    </details>
+                  </figcaption>
+                </figure>
+              ))}
+          </div>
+        )}
       <header className="book-cover">
         <h1>{trip.title}</h1>
         <p>
@@ -162,19 +211,27 @@ export function Guidebook({
           {trip.isExample ? "체험용 예시" : trip.status}
         </span>
       </header>
-      <nav className="book-contents" aria-label="가이드북 목차">
+      <nav
+        className="book-contents"
+        aria-label="가이드북 목차"
+        hidden={section !== "all" && section !== "itinerary"}
+      >
         <a href="#overview">한눈에 보기</a>
         {trip.days.map((d, i) => (
           <a key={d.date} href={`#day-${i}`}>
             {i + 1}일차
           </a>
         ))}
-        <a href="#dining">먹을 곳</a>
-        {options.lodging && <a href="#stay">머무를 곳</a>}
-        {options.budget && <a href="#budget">예산</a>}
-        <a href="#prepare">준비와 출처</a>
+        {section === "all" && <a href="#places">장소 해설</a>}
+        {section === "all" && <a href="#dining">맛집·술집</a>}
+        {section === "all" && options.lodging && <a href="#stay">머무를 곳</a>}
+        {section === "all" && options.budget && <a href="#budget">예산</a>}
+        {section === "all" && <a href="#prepare">준비와 출처</a>}
       </nav>
-      <section id="overview">
+      <section
+        id="overview"
+        hidden={section !== "all" && section !== "itinerary"}
+      >
         <h2>이번 여행, 한눈에</h2>
         <div className="trip-at-a-glance">
           <strong>{trip.days.length}일의 여행</strong>
@@ -230,7 +287,13 @@ export function Guidebook({
         )}
       </section>
       {trip.days.map((day, i) => (
-        <details className="book-day" id={`day-${i}`} key={day.date} open>
+        <details
+          className="book-day"
+          id={`day-${i}`}
+          key={day.date}
+          open
+          hidden={section !== "all" && section !== "itinerary"}
+        >
           <summary>
             <span className="day-count">{String(i + 1).padStart(2, "0")}</span>
             <span>
@@ -275,6 +338,14 @@ export function Guidebook({
                       ? "숙박 정보 생략"
                       : a.title}
                   </h3>
+                  {(options.lodging || a.kind !== "숙박") &&
+                    activityPhoto(trip, a.id, a.title, day.city) && (
+                      <GuidePhoto
+                        photo={activityPhoto(trip, a.id, a.title, day.city)!}
+                        offline={offline}
+                        imageData={imageData}
+                      />
+                    )}
                   {options.details &&
                     (options.lodging || a.kind !== "숙박") && (
                       <>
@@ -346,16 +417,131 @@ export function Guidebook({
           </div>
         </details>
       ))}
-      <section id="dining">
-        <h2>식당 후보 비교하기</h2>
+      <section id="places" hidden={section !== "all" && section !== "places"}>
+        <p className="section-kicker">장소를 알고, 여행을 더 깊게</p>
+        <h2>풍경 너머의 이야기</h2>
+        <p>여정에 포함된 장소의 배경과 눈여겨볼 장면을 모았습니다.</p>
+        {trip.placeGuides
+          ?.filter((g) =>
+            trip.days.some((d) =>
+              d.activities.some(
+                (a) =>
+                  a.id === g.activityId &&
+                  a.title === g.activityTitle &&
+                  (options.lodging || a.kind !== "숙박"),
+              ),
+            ),
+          )
+          .map((g) => {
+            const day = trip.days.find((d) =>
+              d.activities.some((a) => a.id === g.activityId),
+            )!;
+            const photo = activityPhoto(
+              trip,
+              g.activityId,
+              g.activityTitle,
+              day.city,
+            );
+            return (
+              <article className="place-guide-card" key={g.activityId}>
+                {photo ? (
+                  <GuidePhoto
+                    photo={photo}
+                    offline={offline}
+                    imageData={imageData}
+                  />
+                ) : (
+                  <div className="photo-unavailable">
+                    이 장소의 사진을 아직 연결하지 못했습니다.
+                  </div>
+                )}
+                <div className="place-guide-copy">
+                  <p className="section-kicker">
+                    {day.date} · {day.city}
+                  </p>
+                  <h3>{g.name}</h3>
+                  {options.details && (
+                    <>
+                      <p className="place-intro">{g.introduction}</p>
+                      <h4>알고 보면 더 좋은 장면</h4>
+                      <ul className="highlights">
+                        {g.highlights.map((point, i) => (
+                          <li key={i}>{point}</li>
+                        ))}
+                      </ul>
+                      {g.background ? (
+                        <details className="reading-details">
+                          <summary>역사와 문화적 배경 읽기</summary>
+                          <p>{g.background}</p>
+                        </details>
+                      ) : (
+                        <p className="fine-print">
+                          역사적 배경을 뒷받침하는 자료는 아직 부족합니다.
+                        </p>
+                      )}
+                      {g.visitTip && (
+                        <p className="visit-tip">
+                          <strong>방문 팁</strong> {g.visitTip}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  <div className="source-links">{sources(g.sourceIds)}</div>
+                  <a
+                    href={mapUrl(`${day.city} ${g.name}`)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    장소 지도 열기 ↗
+                  </a>
+                </div>
+              </article>
+            );
+          })}
+        {!trip.placeGuides?.length && (
+          <div className="guide-empty">
+            <h3>장소의 이야기를 더할 차례입니다</h3>
+            <p>
+              기존 여행책은 ‘가이드북 내용 보강’을 실행하면 일정을 유지하면서
+              관광지 해설과 음식점 추천을 추가할 수 있습니다. 해설에 쓸 근거가
+              없는 장소는 임의로 채우지 않습니다.
+            </p>
+          </div>
+        )}
+      </section>
+      <section id="dining" hidden={section !== "all" && section !== "dining"}>
+        <p className="section-kicker">오늘은 어디서 먹고 마실까요?</p>
+        <h2>맛집·술집 골라보기</h2>
         <p>
           일정에 넣기 전 비교하는 후보입니다. 후보의 비용은 예산에 별도로 더하지
           않으며, 영업·메뉴·예약 가능 여부를 다시 확인해 주세요.
         </p>
-        {candidates("식당")}
+        {[
+          ...new Set(
+            (trip.recommendations || [])
+              .filter((r) => r.kind === "식당")
+              .map((r) => r.city),
+          ),
+        ].map((city) => (
+          <div className="dining-city" key={city}>
+            <h3>{city}</h3>
+            <div className="dining-grid">{candidates("식당", city)}</div>
+          </div>
+        ))}
+        {!trip.recommendations?.some((r) => r.kind === "식당") && (
+          <div className="guide-empty">
+            <p>
+              근거가 연결된 식당 후보가 아직 없습니다. ‘가이드북 내용 보강’으로
+              취향과 동선에 맞는 식당·술집 자료를 조사할 수 있습니다.
+            </p>
+          </div>
+        )}
       </section>
       {options.lodging && (
-        <section id="stay">
+        <section
+          id="stay"
+          hidden={section !== "all" && section !== "practical"}
+        >
           <h2>숙박 거점 고르기</h2>
           {trip.bases.map((b, i) => (
             <div className="stay-row" key={i}>
@@ -378,7 +564,10 @@ export function Guidebook({
         </section>
       )}
       {options.budget && (
-        <section id="budget">
+        <section
+          id="budget"
+          hidden={section !== "all" && section !== "practical"}
+        >
           <p className="section-kicker">일행 전체 / 항공료 제외</p>
           <h2>여행 예산</h2>
           <div className="budget-grid">
@@ -451,7 +640,7 @@ export function Guidebook({
         </section>
       )}
       {trip.stories.length > 0 && (
-        <section>
+        <section hidden={section !== "all" && section !== "places"}>
           <h2>여행의 뒷이야기</h2>
           {trip.stories.map((s, i) => (
             <details className="story reading-details" key={i}>
@@ -462,7 +651,10 @@ export function Guidebook({
           ))}
         </section>
       )}
-      <section id="prepare">
+      <section
+        id="prepare"
+        hidden={section !== "all" && section !== "practical"}
+      >
         <h2>준비와 재확인</h2>
         <details className="reading-details">
           <summary>여행 준비 팁 {trip.tips.length}개</summary>
@@ -557,10 +749,21 @@ export function Guidebook({
       <a
         className="back-to-top"
         href="#book-top"
-        onClick={offline ? undefined : event => {
-          event.preventDefault();
-          window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-        }}
+        onClick={
+          offline
+            ? undefined
+            : (event) => {
+                event.preventDefault();
+                window.scrollTo({
+                  top: 0,
+                  behavior: window.matchMedia(
+                    "(prefers-reduced-motion: reduce)",
+                  ).matches
+                    ? "instant"
+                    : "smooth",
+                });
+              }
+        }
         aria-label="가이드북 맨 위로 이동"
       >
         <svg

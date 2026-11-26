@@ -139,6 +139,7 @@ export const sourceSchema = z.object({
   revisedAt: z.string().max(100).optional(),
 });
 export const activitySchema = z.object({
+  placeName: z.string().max(200).optional(),
   id: z.string().min(1).max(100),
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   duration: z.number().int().min(0).max(1440),
@@ -257,6 +258,15 @@ export const outlineSchema = z.object({
 });
 export type Outline = z.infer<typeof outlineSchema>;
 export const recommendationSchema = z.object({
+  category: z.enum(["식당", "술집", "이자카야", "카페"]).optional(),
+  specialty: z.string().max(600).optional(),
+  atmosphere: z.string().max(600).optional(),
+  menu: z
+    .array(
+      z.object({ name: z.string().max(100), description: z.string().max(500) }),
+    )
+    .max(5)
+    .optional(),
   kind: z.enum(["식당", "숙박 지역", "숙소"]),
   city: z.string().min(1).max(200),
   name: z.string().min(1).max(300),
@@ -265,7 +275,18 @@ export const recommendationSchema = z.object({
   checks: z.array(text).max(8),
   sourceIds: z.array(z.string().max(200)).max(20),
 });
+export const placeGuideSchema = z.object({
+  activityId: z.string().min(1).max(100),
+  activityTitle: z.string().min(1).max(300),
+  name: z.string().min(1).max(200),
+  introduction: z.string().min(1).max(800),
+  background: z.string().max(1500),
+  highlights: z.array(z.string().max(500)).min(1).max(4),
+  visitTip: z.string().max(600),
+  sourceIds: z.array(z.string().max(200)).min(1).max(10),
+});
 export const tripSchema = z.object({
+  placeGuides: z.array(placeGuideSchema).max(90).optional(),
   visuals: visualsSchema.optional(),
   id: z.string().min(1).max(100),
   version: z.number().int().positive(),

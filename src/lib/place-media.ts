@@ -11,6 +11,7 @@ export async function findRoutePlace(
   title: string,
   city: string,
   signal?: AbortSignal,
+  photos = false,
 ) {
   const cities = routeCities(city);
   const centers: PlaceCandidate[] = [];
@@ -34,6 +35,11 @@ export async function findRoutePlace(
     );
   }
   const match = routeCandidate(title, candidates, centers);
+  if (match && photos) {
+    const exact = await findPlaces(match.title, city, signal, true);
+    const matched = exact.find((p) => p.sourceUrl === match.sourceUrl);
+    if (matched?.photo) match.photo = matched.photo;
+  }
   return match ? [match] : [];
 }
 const headers = {

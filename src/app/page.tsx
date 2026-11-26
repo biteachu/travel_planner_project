@@ -25,7 +25,9 @@ import {
   Upload,
 } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Guidebook } from "../components/Guidebook";
+import { GuidebookView } from "../components/GuidebookView";
+import { PlacePhotoEnrichment } from "../components/PlacePhotoEnrichment";
+import { enrichGuidebook } from "../lib/guide-enrichment";
 import { GuideVisualEditor } from "../components/GuideVisualEditor";
 import { LiveDayMap } from "../components/LiveDayMap";
 import { examples } from "../lib/examples";
@@ -434,6 +436,56 @@ export default function Home() {
           : e instanceof Error
             ? e.message
             : "생성 실패. 완료된 단계는 유지됩니다.",
+      );
+    } finally {
+      setBusy("");
+    }
+  }
+  async function enrichBook() {
+    const original = tripRef.current;
+    if (!original || busy) return;
+    stopped.current = false;
+    setError("");
+    setBusy("관광지 해설과 맛집·술집 자료를 보강하고 있습니다");
+    try {
+      const next = await enrichGuidebook(
+        original,
+        async (stage, payload) => {
+          setBusy(
+            stage === "research"
+              ? "장소와 음식점의 공개 자료를 조사하고 있습니다"
+              : "관광지 해설과 메뉴·추천 특징을 정리하고 있습니다",
+          );
+          return callAgent(stage, payload);
+        },
+        () => {
+          if (stopped.current)
+            throw new Error("보강을 중단했습니다. 기존 여행책은 유지됩니다.");
+          const current = tripRef.current;
+          if (
+            !current ||
+            current.id !== original.id ||
+            JSON.stringify(current.days) !== JSON.stringify(original.days)
+          )
+            throw new Error(
+              "여행 일정이 바뀌어 보강 결과를 적용하지 않았습니다.",
+            );
+        },
+      );
+      const updated = {
+        ...next,
+        visuals: tripRef.current?.visuals || next.visuals,
+      };
+      setTrip(updated);
+      const saved = save(updated);
+      setNotice(
+        `기존 일정은 유지하고 장소 해설 ${updated.placeGuides?.length || 0}개, 음식점 후보 ${updated.recommendations?.filter((r) => r.kind === "식당").length || 0}개를 정리했습니다.${saved ? " 여행책에 보관했습니다." : " 저장하지 못했으므로 JSON으로 내려받아 주세요."}`,
+      );
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "보강하지 못했습니다. 기존 여행책은 유지됩니다.",
       );
     } finally {
       setBusy("");
@@ -1366,6 +1418,37 @@ export default function Home() {
             </div>
             {tab === "guide" ? (
               <>
+                <div className="guide-enrich-banner">
+                  <div>
+                    <strong>동선에서, 한 권의 가이드북으로</strong>
+                    <p>
+                      일정은 그대로 두고 장소 해설·맛집·술집을 보강합니다.
+                      연결한 AI를 사용하며 API 이용 시 비용이 발생할 수
+                      있습니다.
+                    </p>
+                  </div>
+                  <button
+                    className="primary"
+                    disabled={!!busy}
+                    onClick={enrichBook}
+                  >
+                    가이드북 내용 보강
+                  </button>
+                </div>
+                <PlacePhotoEnrichment
+                  key={`photos-${trip.id}`}
+                  trip={trip}
+                  onChange={(update) => {
+                    const current = tripRef.current;
+                    if (!current || current.id !== trip.id) return;
+                    setTrip({
+                      ...current,
+                      visuals: update(
+                        current.visuals ?? { photos: [], places: [] },
+                      ),
+                    });
+                  }}
+                />
                 <GuideVisualEditor
                   key={trip.id}
                   trip={trip}
@@ -1380,7 +1463,8 @@ export default function Home() {
                     });
                   }}
                 />
-                <Guidebook
+                <GuidebookView
+                  key={`reader-${trip.id}`}
                   trip={trip}
                   renderMap={(index) => (
                     <LiveDayMap
