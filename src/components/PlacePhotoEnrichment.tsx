@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Trip } from "../lib/trip";
 import { activityPhoto, photoSchema, type Visuals } from "../lib/guide-visuals";
-import { routeSearchTerm } from "../lib/route-location";
 
 export function PlacePhotoEnrichment({
   trip,
@@ -51,11 +50,10 @@ export function PlacePhotoEnrichment({
         const guide = trip.placeGuides?.find(
           (g) => g.activityId === a.id && g.activityTitle === a.title,
         );
-        const query = (
-          guide?.name ||
-          a.placeName ||
-          routeSearchTerm(a.title)
-        ).slice(0, 250);
+        // Narrative titles can resolve to a nearby station rather than the venue.
+        // Only curate-provided canonical names are safe enough for automatic photos.
+        const query = (guide?.name || a.placeName || "").trim().slice(0, 250);
+        if (!query) continue;
         const cacheKey = `${city}:${query}`;
         try {
           let matches = cache.get(cacheKey);
@@ -111,8 +109,9 @@ export function PlacePhotoEnrichment({
       <div>
         <strong>여정의 풍경을 채워 보세요</strong>
         <p>
-          방문 장소와 이름·위치가 맞고 재사용 조건이 확인된 사진을 찾습니다. AI
-          키 없이 사용할 수 있습니다.
+          명확한 장소명이 있는 일정에서 사진을 찾습니다. 기존 여행책은 먼저
+          내용을 보강하거나 ‘사진·지도 보완’에서 직접 선택해 주세요. 사진 검색은
+          AI 키 없이 사용할 수 있습니다.
         </p>
       </div>
       <button className="secondary" disabled={busy} onClick={collect}>
