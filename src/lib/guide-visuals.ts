@@ -106,6 +106,7 @@ export function directionsLinks(trip: Trip, index: number, lodging = true) {
       url = new URL("https://www.google.com/maps/dir/");
       url.search = new URLSearchParams({
         api: "1",
+        hl: "ko",
         origin: stops[start],
         destination: stops[end],
         ...(end > start + 1

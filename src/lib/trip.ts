@@ -327,7 +327,7 @@ export function safeUrl(value: string) {
 }
 export function mapUrl(name: string) {
   return (
-    "https://www.google.com/maps/search/?api=1&query=" +
+    "https://www.google.com/maps/search/?api=1&hl=ko&query=" +
     encodeURIComponent(name)
   );
 }
