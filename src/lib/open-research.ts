@@ -26,7 +26,7 @@ const pageSchema = z.object({
 });
 
 // Keep useful sections from the entire guide, not only its introductory paragraphs.
-export function selectTravelSections(text: string) {
+export function selectTravelSections(text: string, focusNames: string[] = []) {
   const sections = text.split(/(?=^== [^=\n]+ ==\s*$)/m);
   const wanted =
     /^(?:== (?:Understand|Get in|Get around|See|Do|Eat|Drink|Sleep|Go next) ==)/;
@@ -37,13 +37,48 @@ export function selectTravelSections(text: string) {
     4500,
     Math.floor(28000 / Math.max(chosen.length, 1)),
   );
-  return chosen.map((section) => section.slice(0, perSection)).join("\n\n");
+  return chosen
+    .map((section) => {
+      // Preserve whole paragraphs, prioritizing named itinerary places even when
+      // they occur late in a long See/Eat/Drink section.
+      const heading = section.match(/^== [^=\n]+ ==\s*\n/)?.[0] || "";
+      const paragraphs = section.slice(heading.length).split(/\n\s*\n/);
+      const terms = focusNames
+        .map((x) => x.toLocaleLowerCase())
+        .filter((x) => x.length > 2);
+      const ranked = paragraphs
+        .map((value, index) => ({
+          value,
+          index,
+          score: terms.some((term) => value.toLocaleLowerCase().includes(term))
+            ? 2
+            : 0,
+        }))
+        .sort((a, b) => b.score - a.score || a.index - b.index);
+      let remaining = perSection - heading.length;
+      const selected: { value: string; index: number }[] = [];
+      for (const part of ranked) {
+        const value = part.value.slice(0, remaining);
+        if (value) selected.push({ value, index: part.index });
+        remaining -= value.length + 2;
+        if (remaining <= 0) break;
+      }
+      return (
+        heading +
+        selected
+          .sort((a, b) => a.index - b.index)
+          .map((x) => x.value)
+          .join("\n\n")
+      );
+    })
+    .join("\n\n");
 }
 
 export async function researchWikivoyage(
   titles: string[],
   signal: AbortSignal,
   fetcher: typeof fetch = fetch,
+  focusNames: string[] = [],
 ) {
   const checked = [...new Set(researchTitlesSchema.parse(titles))];
   const pages: z.infer<typeof pageSchema>[] = [];
@@ -113,7 +148,7 @@ export async function researchWikivoyage(
       revisedAt: revision.timestamp,
     });
     parts.push(
-      `[SOURCE ${id}; ${page.title}; revision ${revision.revid}; modified ${revision.timestamp}; CC BY-SA 4.0; Wikivoyage contributors]\n${selectTravelSections(page.extract)}\n[일부 본문만 발췌했습니다. 조회는 현재 영업·가격 확인이 아닙니다. 원문의 도시·국가가 여행 조건과 같은지 확인하고 불일치 시 사용하지 마세요.]`,
+      `[SOURCE ${id}; ${page.title}; revision ${revision.revid}; modified ${revision.timestamp}; CC BY-SA 4.0; Wikivoyage contributors]\n${selectTravelSections(page.extract, focusNames)}\n[일부 본문만 발췌했습니다. 조회는 현재 영업·가격 확인이 아닙니다. 원문의 도시·국가가 여행 조건과 같은지 확인하고 불일치 시 사용하지 마세요.]`,
     );
   }
   signal.throwIfAborted();

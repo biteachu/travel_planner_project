@@ -1,6 +1,8 @@
 import type { PlaceCandidate } from "./guide-visuals";
 export const placeName = (value: string) =>
   value
+    .normalize("NFKC")
+    .toLocaleLowerCase()
     .replace(/\([^)]*\)/g, "")
     .replace(/[\s·]/g, "")
     .trim();
@@ -46,7 +48,8 @@ export function routeCandidate(
   return candidates
     .filter(
       (p) =>
-        placeName(p.title) === term &&
+        (placeName(p.title) === term ||
+          placeName(p.title.split(",")[0]) === term) &&
         centers.some((c) => distanceKm(p, c) < 25),
     )
     .sort(

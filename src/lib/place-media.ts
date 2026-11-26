@@ -12,6 +12,7 @@ export async function findRoutePlace(
   city: string,
   signal?: AbortSignal,
   photos = false,
+  aliases: string[] = [],
 ) {
   const cities = routeCities(city);
   const centers: PlaceCandidate[] = [];
@@ -20,8 +21,8 @@ export async function findRoutePlace(
     const matches = await findPlaces(name, name, signal, false);
     const center = matches.find(
       (p) =>
-        placeName(p.title).replace(/시$/, "") ===
-        placeName(name).replace(/시$/, ""),
+        placeName(p.title).replace(/[시市]$/, "") ===
+        placeName(name).replace(/[시市]$/, ""),
     );
     if (!center) continue;
     centers.push(center);
@@ -34,11 +35,28 @@ export async function findRoutePlace(
       )),
     );
   }
-  const match = routeCandidate(title, candidates, centers);
+  if (!centers.length) return [];
+  let match = routeCandidate(title, candidates, centers);
+  async function attachPhoto(candidate: PlaceCandidate) {
+    const exact = await findPlaces(candidate.title, city, signal, true);
+    const matched = exact.find((p) => p.sourceUrl === candidate.sourceUrl);
+    return matched?.photo ? { ...candidate, photo: matched.photo } : undefined;
+  }
+  if (match && !photos) return [match];
   if (match && photos) {
-    const exact = await findPlaces(match.title, city, signal, true);
-    const matched = exact.find((p) => p.sourceUrl === match.sourceUrl);
-    if (matched?.photo) match.photo = matched.photo;
+    const photographed = await attachPhoto(match);
+    if (photographed) return [photographed];
+  }
+  // Search each explicit canonical name in its own language. Prefixing an
+  // English name with a Korean city would incorrectly force the Korean wiki.
+  for (const alias of [...new Set([title, ...aliases])].slice(0, 4)) {
+    const found = await findPlaces(alias, city, signal, false);
+    const candidate = routeCandidate(alias, found, centers);
+    if (!candidate) continue;
+    match ??= candidate;
+    if (!photos) return [candidate];
+    const photographed = await attachPhoto(candidate);
+    if (photographed) return [photographed];
   }
   return match ? [match] : [];
 }
@@ -124,23 +142,34 @@ export async function findPlaces(
   signal?: AbortSignal,
   photos = true,
 ): Promise<PlaceCandidate[]> {
-  const language = /[가-힣]/.test(query) ? "ko" : "en";
-  const raw = await wiki(
-    `${language}.wikipedia.org`,
-    {
-      generator: "search",
-      gsrsearch: query,
-      gsrlimit: "5",
-      gsrnamespace: "0",
-      prop: "coordinates|pageimages|info|pageprops",
-      inprop: "url",
-      piprop: "name",
-      pilicense: "free",
-      ppprop: "disambiguation",
-    },
-    signal,
+  const languages = /[가-힣]/.test(query)
+    ? ["ko"]
+    : /[ぁ-ゖァ-ヺ]/.test(query)
+      ? ["ja"]
+      : /[一-龯]/.test(query)
+        ? ["ja", "zh"]
+        : ["en"];
+  const results = await Promise.all(
+    languages.map((language) =>
+      wiki(
+        `${language}.wikipedia.org`,
+        {
+          generator: "search",
+          gsrsearch: query,
+          gsrlimit: "5",
+          gsrnamespace: "0",
+          prop: "coordinates|pageimages|info|pageprops",
+          inprop: "url",
+          piprop: "name",
+          pilicense: "free",
+          ppprop: "disambiguation",
+        },
+        signal,
+      ),
+    ),
   );
-  const pages = (raw.query?.pages || [])
+  const pages = results
+    .flatMap((raw) => raw.query?.pages || [])
     .filter(
       (p: {
         coordinates?: unknown[];

@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
         city: z.string().max(200),
         photos: z.boolean().optional(),
         route: z.boolean().optional(),
+        aliases: z.array(z.string().trim().min(1).max(200)).max(3).optional(),
         file: z.string().max(500).optional(),
       })
       .parse(JSON.parse(await readLimitedBody(request, 5000)));
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
           input.city,
           request.signal,
           input.photos,
+          input.aliases,
         ),
       });
     if (!input.file)

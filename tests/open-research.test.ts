@@ -142,6 +142,16 @@ it("앞부분이 긴 문서에서도 식당·숙박 섹션을 남긴다", () => 
   expect(selected).toContain("STAY_MARKER");
   expect(selected.length).toBeLessThan(30000);
 });
+it("prioritizes an actual destination late in a long section", () => {
+  const text =
+    "Overview\n\n== See ==\n\n" +
+    "Unrelated place\n\n".repeat(1000) +
+    "Funaoka Onsen: architectural details.\n\n== Eat ==\n\nNamed restaurant: menu.";
+  const selected = selectTravelSections(text, ["Funaoka Onsen"]);
+  expect(selected).toContain("Funaoka Onsen: architectural details.");
+  expect(selected).toContain("Named restaurant: menu.");
+  expect(selected.length).toBeLessThan(30000);
+});
 it("다중 거점의 최종 합치기에서도 음식·숙박과 각 문서 표시를 남긴다", () => {
   const extract =
     "Intro".repeat(10000) +

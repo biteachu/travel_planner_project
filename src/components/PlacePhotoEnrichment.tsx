@@ -6,19 +6,35 @@ import { activityPhoto, photoSchema, type Visuals } from "../lib/guide-visuals";
 export function PlacePhotoEnrichment({
   trip,
   onChange,
+  onComplete,
 }: {
   trip: Trip;
   onChange: (update: (previous: Visuals) => Visuals) => void;
+  onComplete?: () => boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const controller = useRef<AbortController | null>(null);
-  useEffect(() => () => controller.current?.abort(), [trip.id]);
   const guideSignature = (trip.placeGuides || [])
-    .map((g) => `${g.activityId}:${g.name}`)
+    .map(
+      (g) =>
+        `${g.activityId}:${g.name}:${g.searchNames?.join()}:${g.placeCity}`,
+    )
+    .concat(
+      trip.days.flatMap((d) =>
+        d.activities.map(
+          (a) =>
+            `${a.id}:${a.title}:${a.placeName || ""}:${a.searchNames?.join()}`,
+        ),
+      ),
+    )
     .join("|");
   useEffect(() => {
     if (guideSignature && !controller.current) void collect();
+    return () => {
+      controller.current?.abort();
+      controller.current = null;
+    };
     // A completed/newly enriched book gets matching place photos without another AI call.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trip.id, guideSignature]);
@@ -54,7 +70,11 @@ export function PlacePhotoEnrichment({
         // Only curate-provided canonical names are safe enough for automatic photos.
         const query = (guide?.name || a.placeName || "").trim().slice(0, 250);
         if (!query) continue;
-        const cacheKey = `${city}:${query}`;
+        const searchCity = guide?.placeCity || a.placeCity || city;
+        const aliases = [
+          ...new Set([...(guide?.searchNames || []), ...(a.searchNames || [])]),
+        ].slice(0, 3);
+        const cacheKey = `${searchCity}:${query}:${aliases.join()}`;
         try {
           let matches = cache.get(cacheKey);
           if (!matches) {
@@ -62,7 +82,13 @@ export function PlacePhotoEnrichment({
               method: "POST",
               signal: ctrl.signal,
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ query, city, route: true, photos: true }),
+              body: JSON.stringify({
+                query,
+                city: searchCity,
+                aliases,
+                route: true,
+                photos: true,
+              }),
             });
             if (!response.ok) throw new Error("PHOTO_LOOKUP_FAILED");
             matches = (await response.json()).candidates || [];
@@ -92,16 +118,20 @@ export function PlacePhotoEnrichment({
           failed++;
         }
       }
+      const saved = added > 0 && onComplete?.();
       setMessage(
-        `${added}개 일정에 사진을 연결했습니다.${failed ? ` ${failed}개 조회는 실패했습니다.` : ""} 찾지 못한 장소는 ‘사진·지도 보완’에서 직접 검색할 수 있습니다. 보관을 누르면 사진도 저장됩니다.`,
+        `${added}개 일정에 사진을 연결했습니다. ${targets.length - added}개는 정확한 장소 사진을 확보하지 못했습니다.${failed ? ` 그중 ${failed}개 조회는 실패했습니다.` : ""} ${saved ? "사진까지 브라우저에 자동 보관했습니다." : "새 사진은 ‘보관’을 눌러 저장할 수 있습니다."} 찾지 못한 장소는 ‘사진·지도 보완’에서 확인해 주세요.`,
       );
     } catch {
-      setMessage(
-        `사진 찾기를 중단했습니다. 연결한 ${added}개 사진은 유지됩니다.`,
-      );
+      if (controller.current === ctrl)
+        setMessage(
+          `사진 찾기를 중단했습니다. 연결한 ${added}개 사진은 유지됩니다.`,
+        );
     } finally {
-      setBusy(false);
-      controller.current = null;
+      if (controller.current === ctrl) {
+        setBusy(false);
+        controller.current = null;
+      }
     }
   }
   return (

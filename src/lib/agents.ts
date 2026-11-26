@@ -43,7 +43,13 @@ export async function runAgent(
     data: unknown,
     schema: z.ZodType<T>,
   ): Promise<T> {
-    return ai.generate(common + "\n" + role, data, schema);
+    return ai.generate(
+      common +
+        "\nFor each named activity and placeGuide, provide searchNames with the canonical English and local-language names (not translations of the activity sentence), and placeCity containing only the actual visit city, not an overnight/transit list. Leave these empty when uncertain. Preserve Korean display names.\n" +
+        role,
+      data,
+      schema,
+    );
   }
   if (stage === "check") {
     return ai.check();
@@ -182,7 +188,7 @@ export async function runAgent(
       research: researchSchema.nullable().optional(),
     })
     .parse(payload);
-  const prior = input.trip;
+  let prior = input.trip;
   if (stage === "budget") {
     const result = await json(
       "예산 역할: inspect total-party lodging, meals, activities and local transport against budget. Null means unknown, never zero. Identify missing overnight lodging costs and currency inconsistencies. Suggest realistic reduction options without inventing prices. Do not change any activities or confirmed reservations.",
@@ -228,9 +234,60 @@ export async function runAgent(
     };
   }
   if (stage === "curate") {
+    let research = input.research;
+    let supplementWarning = "";
+    try {
+      const selection = await json(
+        "Choose up to 3 English Wikivoyage city/district articles specifically covering the actual itinerary's named sights and dining neighborhoods. Prefer district See/Eat/Drink listings over city overviews. Also return up to 30 exact English/local-language names of the itinerary places to find within these articles. Do not add destinations to the itinerary. Names are search hints, not factual evidence.",
+        {
+          country: prior.brief.country,
+          preferences: prior.brief.preferences,
+          places: prior.days.map((d) => ({
+            city: d.city,
+            activities: d.activities
+              .filter((a) => a.kind !== "이동" && a.kind !== "숙박")
+              .map((a) => a.placeName || a.title),
+          })),
+        },
+        z.object({
+          titles: researchTitlesSchema,
+          names: z.array(z.string().min(1).max(200)).max(30),
+        }),
+      );
+      const extra = await researchWikivoyage(
+        selection.titles,
+        signal,
+        fetch,
+        selection.names,
+      );
+      const namespace = `detail-${crypto.randomUUID()}`;
+      for (const source of extra.sources) {
+        extra.text = extra.text.replaceAll(
+          `[SOURCE ${source.id};`,
+          `[SOURCE ${namespace}-${source.id};`,
+        );
+        source.id = `${namespace}-${source.id}`;
+      }
+      if (prior.sources.length + extra.sources.length > 300)
+        throw new Error("SOURCE_LIMIT");
+      prior = { ...prior, sources: [...prior.sources, ...extra.sources] };
+      research = researchSchema.parse({
+        text: `${research?.text.slice(0, 14000) || ""}\n\n${extra.text}`.slice(
+          0,
+          100000,
+        ),
+        sources: prior.sources,
+        method: "Wikivoyage · 일정 확정 후 추가 조사",
+        supports: [],
+      });
+    } catch {
+      signal.throwIfAborted();
+      supplementWarning =
+        "장소별 추가 자료 조사를 완료하지 못해 기존 조사 자료로 해설과 추천을 작성했습니다.";
+    }
     const content = await json(
       "가이드북 큐레이터·예산 역할: Also produce placeGuides for named sightseeing destinations appearing in this itinerary (including sights visited as rest activities). Copy activityId and activityTitle EXACTLY; name is the short canonical place name. Give a short introduction, evidence-backed historical/cultural background, 2-4 concrete things to notice on site, and a useful visitTip. If history is unsupported leave background empty, do not turn preferences into history. Every guide needs supporting existing sourceIds. Prioritize useful depth over generic prose. For dining recommendations, aim for 3-5 DISTINCT NAMED businesses per city when evidence permits, including restaurants, bars or izakaya if traveler preferences fit; do not recommend alcohol against preferences. Set kind 식당 for all dining venues and category 식당/술집/이자카야/카페. Provide specialty, atmosphere and menu entries (name and short description) ONLY when the retrieved source actually supports each claim. A general regional dish is not evidence that a specific business serves it. Leave unsupported menu or atmosphere empty. Avoid vague candidates such as 골목 이자카야 or 근처 식당. Missing venue evidence means fewer recommendations with an explicit gap, never invented businesses. Write Korean stories and practical tips from provided evidence only. Review category costs and note missing accommodation and unknown prices in warnings. Do not invent history, safety numbers or visa rules. Stories without verified historical evidence should be preference-based suggestions, clearly framed as suggestions. Produce recommendations grouped by city: dining main/alternative candidates fitting food preferences and route, lodging neighborhoods with tradeoffs, and specific hotels only when supported. Each candidate needs existing supporting sourceIds, a personalized reason, a tradeoff and explicit checks (opening dates, dietary suitability, booking availability). Aim for 2-3 lodging areas per overnight base and useful meal alternatives, but never invent candidates to fill a quota. Missing evidence means omit the candidate and explain the gap in warnings. Do not imply a reservation or live availability. Recommendations are optional choices, not additional scheduled activities or budget entries. Do not put unsourced prices in their text.",
-      { trip: prior, research: input.research },
+      { trip: prior, research },
       z.object({
         placeGuides: tripSchema.shape.placeGuides.unwrap(),
         stories: tripSchema.shape.stories,
@@ -254,11 +311,18 @@ export async function runAgent(
     if (guideContentIssues({ ...prior, ...content }).length)
       throw new Error("EVIDENCE_REFERENCE_INVALID");
     return {
+      research,
       result: {
         ...prior,
         ...content,
         tips: [...new Set([...prior.tips, ...content.tips])].slice(0, 30),
-        warnings: [...new Set([...prior.warnings, ...content.warnings])],
+        warnings: [
+          ...new Set([
+            ...prior.warnings,
+            ...content.warnings,
+            ...(supplementWarning ? [supplementWarning] : []),
+          ]),
+        ].slice(0, 100),
       },
     };
   }

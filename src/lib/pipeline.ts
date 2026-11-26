@@ -193,15 +193,20 @@ export async function advancePipeline(
         result: tripSchema,
         repairDates: z.array(z.string()).max(2).optional(),
         reviewWarnings: z.array(z.string().max(5000)).max(30).optional(),
+        research: researchSchema.nullable().optional(),
       })
       .parse(response);
     const next = parsed.result;
+    const effectiveResearch =
+      state.phase === "curate" && parsed.research
+        ? parsed.research
+        : state.research;
     if (guideContentIssues(next).length)
       throw new Error(guideContentIssues(next).join(" "));
     if (
       hasUnknownSources(
         [...next.stories, ...(next.recommendations || [])],
-        state.research?.sources || [],
+        effectiveResearch?.sources || [],
       ) ||
       (state.phase === "curate" &&
         next.recommendations?.some((item) => !item.sourceIds.length))
@@ -210,6 +215,7 @@ export async function advancePipeline(
         "조사 자료에 없는 출처를 참조한 설명입니다. 다시 시도해 주세요.",
       );
     state.trip = next;
+    state.research = effectiveResearch;
     if (state.phase === "review") {
       const diagnostics = new Set(validateTrip(current.trip!));
       state.baseWarnings ??= (current.trip?.warnings || []).filter(

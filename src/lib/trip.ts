@@ -139,6 +139,8 @@ export const sourceSchema = z.object({
   revisedAt: z.string().max(100).optional(),
 });
 export const activitySchema = z.object({
+  searchNames: z.array(z.string().min(1).max(200)).max(3).optional(),
+  placeCity: z.string().max(200).optional(),
   placeName: z.string().max(200).optional(),
   id: z.string().min(1).max(100),
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
@@ -276,6 +278,8 @@ export const recommendationSchema = z.object({
   sourceIds: z.array(z.string().max(200)).max(20),
 });
 export const placeGuideSchema = z.object({
+  searchNames: z.array(z.string().min(1).max(200)).max(3).optional(),
+  placeCity: z.string().max(200).optional(),
   activityId: z.string().min(1).max(100),
   activityTitle: z.string().min(1).max(300),
   name: z.string().min(1).max(200),

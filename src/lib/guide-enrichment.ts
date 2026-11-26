@@ -69,9 +69,16 @@ export async function enrichGuidebook(
   const input = { ...trip, sources: enrichedSources };
   const response = (await call("curate", { trip: input, research })) as {
     result: unknown;
+    research?: unknown;
   };
   check();
   const content = tripSchema.parse(response.result);
+  const additional = response.research
+    ? researchSchema.parse(response.research).sources
+    : [];
+  const sources = [...enrichedSources];
+  for (const source of additional)
+    if (!sources.some((s) => s.id === source.id)) sources.push(source);
   const next: Trip = {
     ...trip,
     placeGuides: content.placeGuides,
@@ -79,7 +86,7 @@ export async function enrichGuidebook(
     stories: content.stories,
     tips: content.tips,
     warnings: content.warnings,
-    sources: enrichedSources,
+    sources,
     version: trip.version + 1,
     updatedAt: new Date().toISOString(),
     status: "확인 필요",

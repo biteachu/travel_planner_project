@@ -1438,6 +1438,10 @@ export default function Home() {
                 <PlacePhotoEnrichment
                   key={`photos-${trip.id}`}
                   trip={trip}
+                  onComplete={() => {
+                    const current = tripRef.current;
+                    return current?.id === trip.id ? save(current) : false;
+                  }}
                   onChange={(update) => {
                     const current = tripRef.current;
                     if (!current || current.id !== trip.id) return;
@@ -1590,6 +1594,9 @@ export default function Home() {
                         onChange={(e) => {
                           const next = structuredClone(trip);
                           next.days[day].activities[i].title = e.target.value;
+                          delete next.days[day].activities[i].placeName;
+                          delete next.days[day].activities[i].searchNames;
+                          delete next.days[day].activities[i].placeCity;
                           updateTrip(next);
                         }}
                       />

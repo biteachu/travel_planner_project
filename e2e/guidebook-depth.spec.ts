@@ -2,6 +2,52 @@ import { test, expect } from "@playwright/test";
 import { examples } from "../src/lib/examples";
 import photos from "./fixtures/kansai-photos.json";
 
+test("canonical multilingual photos are collected without place guides and persist automatically", async ({
+  page,
+}) => {
+  const trip = structuredClone(examples[0]);
+  trip.isExample = false;
+  const a = trip.days[0].activities.find((a) => a.kind === "관광")!;
+  a.placeName = "후나오카 온천";
+  a.searchNames = ["Funaoka Onsen"];
+  a.placeCity = "교토";
+  trip.placeGuides = [];
+  trip.visuals = { photos: [], places: [] };
+  await page.addInitScript((t) => {
+    if (!localStorage.getItem("travel-books-v1"))
+      localStorage.setItem("travel-books-v1", JSON.stringify([t]));
+  }, trip);
+  let usedAliases = false;
+  await page.route("**/api/place-media", async (route) => {
+    const body = route.request().postDataJSON();
+    if (body.route && body.query === "후나오카 온천") {
+      expect(body.city).toBe("교토");
+      expect(body.aliases).toEqual(["Funaoka Onsen"]);
+      usedAliases = true;
+      await route.fulfill({
+        json: { candidates: [{ title: "Funaoka Onsen", photo: photos[0] }] },
+      });
+    } else await route.fulfill({ json: { candidates: [] } });
+  });
+  async function open() {
+    await page.getByRole("button", { name: "내 여행책", exact: true }).click();
+    await page
+      .getByRole("button", { name: new RegExp(`${trip.title}.*버전`) })
+      .click();
+  }
+  await page.goto("/");
+  await open();
+  await expect(
+    page.getByText(/사진까지 브라우저에 자동 보관했습니다/),
+  ).toBeVisible();
+  expect(usedAliases).toBe(true);
+  await page.reload();
+  await open();
+  await expect(
+    page.locator(".book-activity .destination-photo img"),
+  ).toHaveCount(1);
+});
+
 test("place chapters and dining tabs retain photos, details and keyboard navigation", async ({
   page,
 }) => {
