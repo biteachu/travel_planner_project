@@ -6,9 +6,14 @@ import { assertNoBookingReferences } from "../../../lib/booking-privacy";
 export const runtime = "nodejs";
 export const maxDuration = 120;
 export async function POST(request: NextRequest) {
+  // Next's dev server may normalize nextUrl to localhost even when the
+  // browser uses the fixed loopback host of the PC launcher.
+  const localOrigin = process.env.TRAVEL_LOCAL_CHATGPT === "1" && !process.env.VERCEL &&
+    request.headers.get("host") === "127.0.0.1:3417" &&
+    request.headers.get("origin") === "http://127.0.0.1:3417";
   if (
     request.headers.get("origin") &&
-    request.headers.get("origin") !== request.nextUrl.origin
+    request.headers.get("origin") !== request.nextUrl.origin && !localOrigin
   )
     return NextResponse.json(
       { error: "허용되지 않은 요청입니다." },
